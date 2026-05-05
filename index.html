@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Binary Land Remake - twin penguin mirror maze playable in the browser."
+    />
+    <title>Binary Land Remake - 企鵝先生</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./src/game.js" defer></script>
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="play-surface" aria-label="Binary Land Remake game">
+        <canvas
+          id="gameCanvas"
+          width="640"
+          height="480"
+          tabindex="0"
+          aria-label="Binary Land Remake canvas game"
+        ></canvas>
+
+        <div class="touch-controls" aria-label="Touch controls">
+          <div class="dpad" aria-label="Movement">
+            <button class="pad pad-up" type="button" data-key="ArrowUp" title="Move up" aria-label="Move up">
+              ↑
+            </button>
+            <button class="pad pad-left" type="button" data-key="ArrowLeft" title="Move left" aria-label="Move left">
+              ←
+            </button>
+            <button class="pad pad-right" type="button" data-key="ArrowRight" title="Move right" aria-label="Move right">
+              →
+            </button>
+            <button class="pad pad-down" type="button" data-key="ArrowDown" title="Move down" aria-label="Move down">
+              ↓
+            </button>
+          </div>
+
+          <div class="action-pad" aria-label="Game actions">
+            <button type="button" data-tap="Enter" title="Start / confirm" aria-label="Start or confirm">↵</button>
+            <button type="button" data-tap="KeyZ" title="Spray" aria-label="Spray">Z</button>
+            <button type="button" data-tap="KeyP" title="Pause" aria-label="Pause">Ⅱ</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

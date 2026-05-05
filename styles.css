@@ -1,0 +1,180 @@
+:root {
+  color-scheme: dark;
+  --ink: #f5f7ff;
+  --muted: #9faed0;
+  --panel: #151829;
+  --panel-2: #20243a;
+  --line: #414964;
+  --gold: #ffd662;
+  --pink: #ff67ac;
+  --green: #46d673;
+  --cyan: #8ef0ff;
+  --danger: #ff5c50;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background:
+    linear-gradient(90deg, rgba(255, 214, 98, 0.08) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(142, 240, 255, 0.07) 1px, transparent 1px),
+    #10121c;
+  background-size: 32px 32px;
+  color: var(--ink);
+  font-family:
+    "PingFang TC",
+    "PingFang HK",
+    "Hiragino Sans GB",
+    "Microsoft JhengHei",
+    system-ui,
+    sans-serif;
+  letter-spacing: 0;
+}
+
+button,
+canvas {
+  font: inherit;
+}
+
+.app-shell {
+  min-height: 100svh;
+  display: grid;
+  place-items: center;
+  padding: clamp(12px, 3vw, 28px);
+}
+
+.play-surface {
+  width: min(100%, 860px);
+  display: grid;
+  gap: 14px;
+  justify-items: center;
+}
+
+#gameCanvas {
+  width: min(100%, 720px);
+  aspect-ratio: 4 / 3;
+  height: auto;
+  display: block;
+  border: 2px solid var(--line);
+  background: #0c0e1c;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+  image-rendering: auto;
+  outline: none;
+}
+
+#gameCanvas:focus-visible {
+  border-color: var(--gold);
+  box-shadow:
+    0 0 0 3px rgba(255, 214, 98, 0.24),
+    0 18px 50px rgba(0, 0, 0, 0.35);
+}
+
+.touch-controls {
+  width: min(100%, 720px);
+  display: grid;
+  grid-template-columns: 160px minmax(160px, 1fr);
+  gap: 16px;
+  align-items: center;
+}
+
+.dpad {
+  width: 156px;
+  height: 116px;
+  display: grid;
+  grid-template-columns: repeat(3, 52px);
+  grid-template-rows: repeat(3, 38px);
+}
+
+.pad-up {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.pad-left {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.pad-right {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+.pad-down {
+  grid-column: 2;
+  grid-row: 3;
+}
+
+.action-pad {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(56px, 1fr));
+  gap: 10px;
+}
+
+.touch-controls button {
+  min-width: 0;
+  min-height: 38px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--ink);
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 800;
+  line-height: 1;
+  transition:
+    transform 120ms ease,
+    background-color 120ms ease,
+    border-color 120ms ease;
+  touch-action: none;
+  user-select: none;
+}
+
+.touch-controls button:is(:hover, :focus-visible) {
+  background: var(--panel-2);
+  border-color: var(--cyan);
+}
+
+.touch-controls button:active,
+.touch-controls button.is-held {
+  transform: translateY(1px);
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+.action-pad button:nth-child(2) {
+  color: var(--cyan);
+}
+
+.action-pad button:nth-child(3) {
+  color: var(--pink);
+}
+
+@media (max-width: 560px) {
+  .app-shell {
+    align-items: start;
+    padding: 10px;
+  }
+
+  .touch-controls {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+
+  .action-pad {
+    width: min(100%, 360px);
+  }
+}
+
+@media (pointer: fine) and (min-width: 720px) {
+  .touch-controls {
+    opacity: 0.9;
+  }
+}
