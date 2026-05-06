@@ -14,6 +14,9 @@
   const BOARD_X = (WINDOW_W - BOARD_W) / 2;
   const BOARD_Y = 96;
   const CENTER_COL = 7;
+  const MID_ROW = 5;
+  const LEFT_GAP = 2;
+  const RIGHT_GAP = COLS - 1 - LEFT_GAP;
 
   const LEFT_GOAL = [6, 0];
   const RIGHT_GOAL = [8, 0];
@@ -223,17 +226,28 @@
       if (inBounds([x, y]) && x !== CENTER_COL && y !== 0) rows[y][x] = "#";
     }
 
+    for (let x = 0; x < COLS; x += 1) {
+      if (x === CENTER_COL) continue;
+      rows[MID_ROW][x] = (x === LEFT_GAP || x === RIGHT_GAP) ? "." : "#";
+    }
+
     let layout = rows.map((row) => row.join(""));
     if (!reachable(layout, GURIN_START, LEFT_GOAL)) {
       for (let y = 1; y < ROWS; y += 1) {
-        for (let x = 0; x < CENTER_COL; x += 1) rows[y][x] = ".";
+        for (let x = 0; x < CENTER_COL; x += 1) {
+          if (y === MID_ROW && x !== LEFT_GAP) continue;
+          rows[y][x] = ".";
+        }
       }
     }
 
     layout = rows.map((row) => row.join(""));
     if (!reachable(layout, MALON_START, RIGHT_GOAL)) {
       for (let y = 1; y < ROWS; y += 1) {
-        for (let x = CENTER_COL + 1; x < COLS; x += 1) rows[y][x] = ".";
+        for (let x = CENTER_COL + 1; x < COLS; x += 1) {
+          if (y === MID_ROW && x !== RIGHT_GAP) continue;
+          rows[y][x] = ".";
+        }
       }
     }
 
@@ -1035,7 +1049,8 @@
           const rectY = BOARD_Y + y * TILE;
           const cell = this.level.layout[y][x];
           if (cell === "#") {
-            ctx.fillStyle = x === CENTER_COL ? COLORS.centerWall : COLORS.wall;
+            const isStructural = x === CENTER_COL || y === MID_ROW;
+            ctx.fillStyle = isStructural ? COLORS.centerWall : COLORS.wall;
             ctx.fillRect(rectX, rectY, TILE, TILE);
             ctx.strokeStyle = COLORS.wallHi;
             ctx.lineWidth = 2;
