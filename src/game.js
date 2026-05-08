@@ -22,6 +22,12 @@
   const RIGHT_GOAL = [8, 0];
   const NOVA_START = [2, 9];
   const VEGA_START = [12, 9];
+  const BRAND_NAME = "小寶貝飛飛雙向奔赴";
+  const BRAND_SUBTITLE = "飛飛和淳忻忻的鏡像奔赴";
+  const BRAND_TAGLINE = "雙人同步解謎 / Two-way Mirror Puzzle";
+  const FEIFEI_NAME = "飛飛";
+  const CHUNXINXIN_NAME = "淳忻忻";
+  const HIGH_SCORE_KEY = "baby-feifei-high-score";
 
   const STATE_TITLE = "title";
   const STATE_HELP = "help";
@@ -74,8 +80,8 @@
     text: "#eef2ff",
     muted: "#a0accc",
     danger: "#ff5c50",
-    nova: "#46d673",
-    vega: "#ff80b9",
+    nova: "#ffd94a",
+    vega: "#f5f7ff",
     white: "#f5f7ff",
     black: "#080a10",
     yellow: "#ffdc5c",
@@ -84,6 +90,40 @@
     bolt: "#ff6e28",
     switcher: "#ff66c4",
   };
+
+  const CHARACTER_ASSETS = {
+    feifei: {
+      name: FEIFEI_NAME,
+      color: COLORS.nova,
+      src: "assets/characters/feifei.jpg",
+      crop: { x: 20, y: 54, w: 156, h: 150 },
+    },
+    chunxinxin: {
+      name: CHUNXINXIN_NAME,
+      color: COLORS.vega,
+      src: "assets/characters/chunxinxin.jpg",
+      crop: { x: 0, y: 0, w: 188, h: 180 },
+    },
+  };
+
+  const CHARACTER_IMAGE_STATE = new Map();
+
+  function preloadCharacterImages() {
+    for (const [key, asset] of Object.entries(CHARACTER_ASSETS)) {
+      const image = new Image();
+      const state = { image, loaded: false, failed: false };
+      image.onload = () => {
+        state.loaded = true;
+      };
+      image.onerror = () => {
+        state.failed = true;
+      };
+      image.src = asset.src;
+      CHARACTER_IMAGE_STATE.set(key, state);
+    }
+  }
+
+  preloadCharacterImages();
 
   const ITEM_TYPES = ["battery", "shield", "metronome", "scanner", "prism"];
   const ITEM_LABELS = {
@@ -336,7 +376,7 @@
 
     return {
       number,
-      name: `SYNC MAZE ${number}`,
+      name: `TWO-WAY MAZE ${number}`,
       layout,
       snares,
       drones,
@@ -364,7 +404,7 @@
     const cores = new Set(coreSeeds.map((pos) => cellKey(nearestFloor(layout, pos, reserved))));
     return {
       number: afterLevel,
-      name: `BONUS SYNC ${afterLevel}`,
+      name: `BONUS RUN ${afterLevel}`,
       layout,
       snares: new Set(),
       drones: [],
@@ -411,13 +451,13 @@
     context.closePath();
   }
 
-  class LumapairGame {
+  class BabyFeifeiGame {
     constructor() {
       this.keysDown = new Set();
       this.heldOrder = [];
       this.running = true;
       this.state = STATE_TITLE;
-      this.primary = "Nova";
+      this.primary = FEIFEI_NAME;
       this.difficulty = "normal";
       this.syncBuffer = "";
       this.syncMode = false;
@@ -430,8 +470,8 @@
       this.bonusAfter = 0;
 
       this.level = makeLevel(1);
-      this.nova = this.makeRunner("Nova", COLORS.nova, NOVA_START);
-      this.vega = this.makeRunner("Vega", COLORS.vega, VEGA_START);
+      this.nova = this.makeRunner(FEIFEI_NAME, COLORS.nova, NOVA_START, "feifei");
+      this.vega = this.makeRunner(CHUNXINXIN_NAME, COLORS.vega, VEGA_START, "chunxinxin");
       this.snares = new Set();
       this.drones = [];
       this.surges = [];
@@ -457,10 +497,11 @@
       this.lastTime = performance.now();
     }
 
-    makeRunner(name, color, pos) {
+    makeRunner(name, color, pos, spriteKey) {
       return {
         name,
         color,
+        spriteKey,
         pos: [...pos],
         facing: [0, -1],
         trapped: false,
@@ -470,7 +511,7 @@
 
     loadHighScore() {
       try {
-        return Number.parseInt(localStorage.getItem("lumapair-high-score") || "0", 10) || 0;
+        return Number.parseInt(localStorage.getItem(HIGH_SCORE_KEY) || "0", 10) || 0;
       } catch {
         return 0;
       }
@@ -480,7 +521,7 @@
       if (this.score <= this.highScore) return;
       this.highScore = this.score;
       try {
-        localStorage.setItem("lumapair-high-score", String(this.highScore));
+        localStorage.setItem(HIGH_SCORE_KEY, String(this.highScore));
       } catch {
         // Local storage can be blocked in private contexts; the game still runs.
       }
@@ -498,10 +539,8 @@
 
     loadStage() {
       this.level = this.stageIsBonus ? makeBonusLevel(this.bonusAfter) : makeLevel(this.levelNo);
-      const novaName = this.syncMode ? "Astra" : "Nova";
-      const vegaName = this.syncMode ? "Umbra" : "Vega";
-      this.nova = this.makeRunner(novaName, COLORS.nova, NOVA_START);
-      this.vega = this.makeRunner(vegaName, COLORS.vega, VEGA_START);
+      this.nova = this.makeRunner(FEIFEI_NAME, COLORS.nova, NOVA_START, "feifei");
+      this.vega = this.makeRunner(CHUNXINXIN_NAME, COLORS.vega, VEGA_START, "chunxinxin");
 
       this.snares = new Set(this.level.snares);
       this.drones = this.level.drones.map((pos) => ({ pos: [...pos], timer: Math.random() * 0.4 }));
@@ -584,15 +623,17 @@
         this.heldOrder.push(code);
       }
 
+      if (code === "KeyF") {
+        this.primary = FEIFEI_NAME;
+      } else if (code === "KeyC") {
+        this.primary = CHUNXINXIN_NAME;
+      }
+
       if (this.state === STATE_TITLE) {
         if (code === "Enter") {
           this.newGame();
         } else if (code === "KeyH") {
           this.state = STATE_HELP;
-        } else if (code === "KeyN") {
-          this.primary = "Nova";
-        } else if (code === "KeyV") {
-          this.primary = "Vega";
         } else if (code === "Digit1") {
           this.difficulty = "easy";
         } else if (code === "Digit2") {
@@ -601,9 +642,9 @@
           this.difficulty = "hard";
         } else if (/^[a-z]$/i.test(key)) {
           this.syncBuffer = (this.syncBuffer + key.toLowerCase()).slice(-8);
-          if (this.syncBuffer.endsWith("sync")) {
+          if (this.syncBuffer.endsWith("love")) {
             this.syncMode = !this.syncMode;
-            this.message = this.syncMode ? "Sync Story mode ON" : "Sync Story mode OFF";
+            this.message = this.syncMode ? "雙向奔赴彩蛋 ON" : "雙向奔赴彩蛋 OFF";
             this.messageTimer = 2;
           }
         }
@@ -649,7 +690,7 @@
       const [dx, dy] = inputVec;
       const normal = [dx, dy];
       const mirrored = dx ? [-dx, dy] : [0, dy];
-      return this.primary === "Nova" ? [normal, mirrored] : [mirrored, normal];
+      return this.primary === FEIFEI_NAME ? [normal, mirrored] : [mirrored, normal];
     }
 
     trapRunner(runner) {
@@ -683,15 +724,15 @@
 
     moveRunners(inputVec) {
       const [novaVec, vegaVec] = this.actualVectors(inputVec);
-      const oldNova = [...this.nova.pos];
-      const oldVega = [...this.vega.pos];
-      let newNova = oldNova;
-      let newVega = oldVega;
+      const oldFeifei = [...this.nova.pos];
+      const oldChunxinxin = [...this.vega.pos];
+      let newFeifei = oldFeifei;
+      let newChunxinxin = oldChunxinxin;
 
       if (!this.nova.trapped) {
         this.nova.facing = novaVec;
-        const candidate = addPos(oldNova, novaVec);
-        if (this.isPassable(candidate)) newNova = candidate;
+        const candidate = addPos(oldFeifei, novaVec);
+        if (this.isPassable(candidate)) newFeifei = candidate;
       } else {
         this.nova.facing = novaVec;
         this.struggleRunner(this.nova);
@@ -699,24 +740,24 @@
 
       if (!this.vega.trapped) {
         this.vega.facing = vegaVec;
-        const candidate = addPos(oldVega, vegaVec);
-        if (this.isPassable(candidate)) newVega = candidate;
+        const candidate = addPos(oldChunxinxin, vegaVec);
+        if (this.isPassable(candidate)) newChunxinxin = candidate;
       } else {
         this.vega.facing = vegaVec;
         this.struggleRunner(this.vega);
       }
 
-      if (sameCell(newNova, newVega)) {
-        newNova = oldNova;
-        newVega = oldVega;
-      } else if (sameCell(newNova, oldVega) && sameCell(newVega, oldVega)) {
-        newNova = oldNova;
-      } else if (sameCell(newVega, oldNova) && sameCell(newNova, oldNova)) {
-        newVega = oldVega;
+      if (sameCell(newFeifei, newChunxinxin)) {
+        newFeifei = oldFeifei;
+        newChunxinxin = oldChunxinxin;
+      } else if (sameCell(newFeifei, oldChunxinxin) && sameCell(newChunxinxin, oldChunxinxin)) {
+        newFeifei = oldFeifei;
+      } else if (sameCell(newChunxinxin, oldFeifei) && sameCell(newFeifei, oldFeifei)) {
+        newChunxinxin = oldChunxinxin;
       }
 
-      this.nova.pos = newNova;
-      this.vega.pos = newVega;
+      this.nova.pos = newFeifei;
+      this.vega.pos = newChunxinxin;
       this.afterRunnerPositionsChanged();
     }
 
@@ -729,7 +770,7 @@
       }
 
       if (this.nova.trapped && this.vega.trapped) {
-        this.message = "兩名訊號員同時被困，連按方向或 Z 掙脫!";
+        this.message = "飛飛和淳忻忻同時被困，連按方向或 Z 掙脫!";
         this.messageTimer = 1.4;
       }
 
@@ -874,7 +915,7 @@
             this.nova.pos = this.vega.pos;
             this.vega.pos = novaPos;
             switcher.cooldown = 1.2;
-            this.message = "相位轉換器啟動：兩名訊號員交換位置!";
+            this.message = "相位轉換器啟動：飛飛和淳忻忻交換位置!";
             this.messageTimer = 2;
             for (const candidate of [this.nova, this.vega]) {
               if (this.snares.has(cellKey(candidate.pos))) this.trapRunner(candidate);
@@ -1041,37 +1082,37 @@
     }
 
     drawTitle() {
-      this.text("Lumapair", WINDOW_W / 2, 72, 46, COLORS.yellow, { center: true, bold: true });
-      this.text("光訊號雙生迷宮", WINDOW_W / 2, 120, 34, COLORS.core, { center: true, bold: true });
-      this.text("雙人同步解謎 / Twin Signal Puzzle", WINDOW_W / 2, 158, 22, COLORS.text, { center: true });
+      this.text(BRAND_NAME, WINDOW_W / 2, 72, 42, COLORS.yellow, { center: true, bold: true });
+      this.text(BRAND_SUBTITLE, WINDOW_W / 2, 120, 30, COLORS.core, { center: true, bold: true });
+      this.text(BRAND_TAGLINE, WINDOW_W / 2, 156, 22, COLORS.text, { center: true });
 
       const left = 100;
       const y = 210;
-      this.text(`主要控制 Primary: ${this.primary}   [N/V 切換]`, left, y, 22);
+      this.text(`主要控制: ${this.primary}   [F/C 切換]`, left, y, 22);
       this.text(`難度 Difficulty: ${DIFFICULTIES[this.difficulty].label}   [1/2/3]`, left, y + 34, 22);
-      this.text("方向鍵移動，Z/Space 發出脈衝，P 暫停", left, y + 78, 22, COLORS.muted);
+      this.text("方向鍵移動，Z/Space 發出心意，P 暫停", left, y + 78, 22, COLORS.muted);
       this.text("Press ENTER to Start    H: Help", left, y + 112, 22, COLORS.yellow);
-      this.text("彩蛋 Easter egg: 在標題畫面輸入 SYNC", left, y + 148, 16, COLORS.muted);
+      this.text("彩蛋: LOVE", WINDOW_W / 2, y + 148, 16, COLORS.muted, { center: true });
 
       if (this.message) this.text(this.message, WINDOW_W / 2, 452, 22, COLORS.core, { center: true });
 
-      this.drawRunnerAt([154, 412], COLORS.nova, "Nova", [1, 0], false);
-      this.drawRunnerAt([486, 412], COLORS.vega, "Vega", [-1, 0], false);
-      drawCore(ctx, [320, 408], 34, COLORS.core);
+      this.drawRunnerAt([154, 426], COLORS.nova, FEIFEI_NAME, [1, 0], false, "feifei", 68);
+      this.drawRunnerAt([486, 426], COLORS.vega, CHUNXINXIN_NAME, [-1, 0], false, "chunxinxin", 68);
+      drawCore(ctx, [320, 422], 34, COLORS.core);
     }
 
     drawHelp() {
       const lines = [
         ["玩法說明 / How to Play", 34, COLORS.yellow, true],
         ["", 16, COLORS.text, false],
-        ["你同時控制兩名訊號員。主要角色左右正常，另一名左右相反，上下相同。", 16, COLORS.text, false],
-        ["You control both runners at once. The partner mirrors left/right.", 16, COLORS.text, false],
+        ["你同時控制飛飛和淳忻忻。主要角色左右正常，另一名左右相反，上下相同。", 16, COLORS.text, false],
+        ["You control both characters at once. The partner mirrors left/right.", 16, COLORS.text, false],
         ["", 16, COLORS.text, false],
-        ["目標：兩名訊號員必須同時站在上方同步核心左右兩格。", 16, COLORS.text, false],
+        ["目標：飛飛和淳忻忻必須同時站在上方同步核心左右兩格。", 16, COLORS.text, false],
         ["Goal: stand on both sides of the relay core at the same time.", 16, COLORS.text, false],
         ["", 16, COLORS.text, false],
-        ["Z 或 Space：向前 1 格發出脈衝。可停止巡邏器、打散靜滯場。", 16, COLORS.text, false],
-        ["Z or Space: pulse one tile forward to clear drones and snares.", 16, COLORS.text, false],
+        ["Z 或 Space：向前 1 格發出心意。可停止巡邏器、打散靜滯場。", 16, COLORS.text, false],
+        ["Z or Space: send a pulse one tile forward to clear drones and snares.", 16, COLORS.text, false],
         ["", 16, COLORS.text, false],
         ["靜滯場：踩中會被困；按方向鍵或 Z 會累積掙脫進度。", 16, COLORS.text, false],
         ["Surges cannot be stopped. Phase switchers after level 9 swap the runners.", 16, COLORS.text, false],
@@ -1096,7 +1137,7 @@
       this.text(levelLabel, 430, 14, 22);
       this.text(`LIVES ${this.lives}`, 20, 48, 22);
       this.text(`TIME ${String(Math.max(0, Math.floor(this.timeLeft))).padStart(3, "0")}`, 170, 48, 22, this.timeLeft < 15 ? COLORS.danger : COLORS.text);
-      this.text(`PRIMARY ${this.primary}`, 320, 48, 16, COLORS.muted);
+      this.text(`主控 ${this.primary}`, 320, 48, 16, COLORS.muted);
       if (this.invincibleTimer > 0) {
         this.text("PRISM", 515, 48, 22, COLORS.yellow);
       } else if (this.enemySlowTimer > 0) {
@@ -1157,7 +1198,7 @@
         this.text(this.message, WINDOW_W / 2, BOARD_Y + BOARD_H + 22, 16, COLORS.yellow, { center: true });
       }
 
-      let footer = "Arrows 移動 | Z/Space 脈衝 | P 暫停";
+      let footer = "Arrows 移動 | Z/Space 心意 | P 暫停";
       if (this.level.bonus) footer += ` | Cores left: ${this.bonusCores.size}`;
       this.text(footer, WINDOW_W / 2, WINDOW_H - 20, 16, COLORS.muted, { center: true });
     }
@@ -1197,49 +1238,81 @@
     }
 
     drawRunner(runner) {
-      this.drawRunnerAt(cellCenter(runner.pos), runner.color, runner.name, runner.facing, runner.trapped);
+      this.drawRunnerAt(cellCenter(runner.pos), runner.color, runner.name, runner.facing, runner.trapped, runner.spriteKey);
     }
 
-    drawRunnerAt([cx, cy], color, name, facing, trapped) {
+    drawRunnerAt([cx, cy], color, name, facing, trapped, spriteKey = null, size = 32) {
+      const half = size / 2;
+      const labelSize = Math.max(14, Math.min(18, Math.floor(size * 0.42)));
+      const character = spriteKey ? CHARACTER_ASSETS[spriteKey] : null;
+      const imageState = spriteKey ? CHARACTER_IMAGE_STATE.get(spriteKey) : null;
       const pulseGlow = Math.sin(performance.now() * 0.01) * 0.18 + 0.72;
       ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
       ctx.beginPath();
-      ctx.ellipse(cx, cy + 13, 11, 3, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx, cy + half * 0.82, half * 0.72, Math.max(3, size * 0.09), 0, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.moveTo(cx, cy - 14);
-      ctx.lineTo(cx + 12, cy - 4);
-      ctx.lineTo(cx + 9, cy + 12);
-      ctx.lineTo(cx, cy + 16);
-      ctx.lineTo(cx - 9, cy + 12);
-      ctx.lineTo(cx - 12, cy - 4);
-      ctx.closePath();
-      ctx.fill();
+      if (character && imageState?.loaded) {
+        const x = cx - half;
+        const y = cy - half;
+        ctx.save();
+        roundedRect(ctx, x, y, size, size, Math.max(6, size * 0.22));
+        ctx.clip();
+        ctx.fillStyle = COLORS.black;
+        ctx.fillRect(x, y, size, size);
+        const { crop } = character;
+        ctx.drawImage(imageState.image, crop.x, crop.y, crop.w, crop.h, x, y, size, size);
+        ctx.restore();
 
-      ctx.strokeStyle = COLORS.white;
-      ctx.lineWidth = 2;
-      ctx.stroke();
+        ctx.strokeStyle = trapped ? COLORS.snare : COLORS.white;
+        ctx.lineWidth = Math.max(2, size * 0.07);
+        roundedRect(ctx, x + 1, y + 1, size - 2, size - 2, Math.max(5, size * 0.2));
+        ctx.stroke();
+      } else {
+        const scale = size / 32;
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - 14 * scale);
+        ctx.lineTo(cx + 12 * scale, cy - 4 * scale);
+        ctx.lineTo(cx + 9 * scale, cy + 12 * scale);
+        ctx.lineTo(cx, cy + 16 * scale);
+        ctx.lineTo(cx - 9 * scale, cy + 12 * scale);
+        ctx.lineTo(cx - 12 * scale, cy - 4 * scale);
+        ctx.closePath();
+        ctx.fill();
 
-      ctx.fillStyle = `rgba(255, 255, 255, ${pulseGlow})`;
-      roundedRect(ctx, cx - 5, cy - 8, 10, 15, 4);
-      ctx.fill();
+        ctx.strokeStyle = COLORS.white;
+        ctx.lineWidth = Math.max(2, 2 * scale);
+        ctx.stroke();
 
-      ctx.fillStyle = COLORS.yellow;
-      ctx.beginPath();
-      ctx.moveTo(cx + facing[0] * 11, cy + facing[1] * 11);
-      ctx.lineTo(cx + facing[1] * 4 - facing[0] * 3, cy - facing[0] * 4 - facing[1] * 3);
-      ctx.lineTo(cx - facing[1] * 4 - facing[0] * 3, cy + facing[0] * 4 - facing[1] * 3);
-      ctx.closePath();
-      ctx.fill();
+        ctx.fillStyle = `rgba(255, 255, 255, ${pulseGlow})`;
+        roundedRect(ctx, cx - 5 * scale, cy - 8 * scale, 10 * scale, 15 * scale, 4 * scale);
+        ctx.fill();
+      }
+
+      if (facing[0] || facing[1]) {
+        const arrow = Math.max(5, size * 0.17);
+        const normal = [-facing[1], facing[0]];
+        const tip = [cx + facing[0] * (half + 6), cy + facing[1] * (half + 6)];
+        const base = [cx + facing[0] * (half - 3), cy + facing[1] * (half - 3)];
+        ctx.fillStyle = COLORS.pulse;
+        ctx.beginPath();
+        ctx.moveTo(tip[0], tip[1]);
+        ctx.lineTo(base[0] + normal[0] * arrow, base[1] + normal[1] * arrow);
+        ctx.lineTo(base[0] - normal[0] * arrow, base[1] - normal[1] * arrow);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = COLORS.black;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
 
       if (this.invincibleTimer > 0 && !trapped) {
         const pulse = Math.sin(performance.now() * 0.02) > 0 ? 3 : 2;
         ctx.strokeStyle = COLORS.yellow;
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.ellipse(cx, cy + 0.5, 11 + pulse * 2, 13.5 + pulse * 2, 0, 0, Math.PI * 2);
+        ctx.ellipse(cx, cy + 0.5, half * 0.72 + pulse * 2, half * 0.84 + pulse * 2, 0, 0, Math.PI * 2);
         ctx.stroke();
       }
 
@@ -1247,15 +1320,15 @@
         ctx.strokeStyle = COLORS.snare;
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.rect(cx - 15, cy - 15, 30, 30);
+        ctx.rect(cx - half, cy - half, size, size);
         ctx.stroke();
         for (let i = 0; i < TRAP_ESCAPE_STEPS; i += 1) {
           ctx.fillStyle = i < this.escapePipsFor(name) ? COLORS.pulse : "rgba(198, 205, 224, 0.35)";
-          ctx.fillRect(cx - 12 + i * 8, cy + 18, 5, 3);
+          ctx.fillRect(cx - half + 4 + i * (size - 8) / TRAP_ESCAPE_STEPS, cy + half + 2, Math.max(4, size * 0.15), 3);
         }
       }
 
-      this.text(name, cx, cy - 24, 16, COLORS.text, { center: true });
+      this.text(name, cx, cy - half - 9, labelSize, COLORS.text, { center: true });
     }
 
     escapePipsFor(name) {
@@ -1462,15 +1535,15 @@
       ctx.fillStyle = "rgba(0, 0, 0, 0.32)";
       ctx.fillRect(0, 0, WINDOW_W, WINDOW_H);
       const t = performance.now() * 0.006;
-      this.text("SYNC CLEAR!", WINDOW_W / 2, 166, 46, COLORS.core, { center: true, bold: true });
-      this.text("雙訊號完成同步", WINDOW_W / 2, 210, 22, COLORS.yellow, { center: true });
+      this.text("奔赴成功!", WINDOW_W / 2, 166, 46, COLORS.core, { center: true, bold: true });
+      this.text("飛飛和淳忻忻完成同步", WINDOW_W / 2, 210, 22, COLORS.yellow, { center: true });
       for (let i = 0; i < 8; i += 1) {
         const x = 230 + i * 26;
         const y = 260 + Math.sin(t + i) * 16;
         drawCore(ctx, [x, y], 18, COLORS.core);
       }
-      this.drawRunnerAt([280, 318], COLORS.nova, this.nova.name, [1, 0], false);
-      this.drawRunnerAt([360, 318], COLORS.vega, this.vega.name, [-1, 0], false);
+      this.drawRunnerAt([280, 318], COLORS.nova, this.nova.name, [1, 0], false, this.nova.spriteKey);
+      this.drawRunnerAt([360, 318], COLORS.vega, this.vega.name, [-1, 0], false, this.vega.spriteKey);
       drawCore(ctx, [320, 308], 32, COLORS.core);
     }
 
@@ -1479,15 +1552,15 @@
       const color = win ? COLORS.yellow : COLORS.danger;
       this.text(title, WINDOW_W / 2, 110, 46, color, { center: true, bold: true });
       if (win) {
-        this.text("Nova 和 Vega 完成 10 關 + Bonus!", WINDOW_W / 2, 170, 22, COLORS.text, { center: true });
+        this.text("飛飛和淳忻忻完成 10 關 + Bonus!", WINDOW_W / 2, 170, 22, COLORS.text, { center: true });
       } else {
         this.text("同步路徑尚未完成，再挑戰一次吧。", WINDOW_W / 2, 170, 22, COLORS.text, { center: true });
       }
       this.text(`Score: ${String(this.score).padStart(6, "0")}`, WINDOW_W / 2, 230, 34, COLORS.yellow, { center: true, bold: true });
       this.text(`High Score: ${String(this.highScore).padStart(6, "0")}`, WINDOW_W / 2, 270, 22, COLORS.muted, { center: true });
       this.text("ENTER: 回標題    ESC: 離開", WINDOW_W / 2, 340, 22, COLORS.text, { center: true });
-      this.drawRunnerAt([250, 400], COLORS.nova, "Nova", [1, 0], false);
-      this.drawRunnerAt([390, 400], COLORS.vega, "Vega", [-1, 0], false);
+      this.drawRunnerAt([250, 400], COLORS.nova, FEIFEI_NAME, [1, 0], false, "feifei", 56);
+      this.drawRunnerAt([390, 400], COLORS.vega, CHUNXINXIN_NAME, [-1, 0], false, "chunxinxin", 56);
       drawCore(ctx, [320, 394], 30, COLORS.core);
     }
 
@@ -1500,10 +1573,10 @@
     }
   }
 
-  const game = new LumapairGame();
+  const game = new BabyFeifeiGame();
 
   window.addEventListener("keydown", (event) => {
-    if (DIR_VECTORS.has(event.code) || ["Space", "KeyZ", "KeyP", "Enter"].includes(event.code)) {
+    if (DIR_VECTORS.has(event.code) || ["Space", "KeyZ", "KeyP", "KeyF", "KeyC", "Enter"].includes(event.code)) {
       event.preventDefault();
     }
     game.handleKeyDown(event.code, event.key);

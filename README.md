@@ -1,13 +1,15 @@
-# Lumapair
+# 小寶貝飛飛雙向奔赴
 
-Original browser-playable twin-signal puzzle built with HTML5 Canvas.
+Browser-playable mirrored two-character puzzle built with HTML5 Canvas.
 
 Live site target: Vercel static deployment.
 
 ## Current Commercialization Status
 
-- Public-facing title, metadata, character names, visual language, enemies, traps, items, and help text have been changed to the original `Lumapair` concept.
-- The old one-sided permanent trap problem has been removed. Standard stages now place snares and major hazards as mirrored pairs, and trapped runners can escape by pressing movement keys or `Z`/`Space`.
+- Public-facing title, metadata, character names, help text, and title-screen presentation now use the `小寶貝飛飛雙向奔赴` brand.
+- The left-side character is `飛飛`, drawn from `assets/characters/feifei.jpg`.
+- The right-side character is `淳忻忻`, drawn from `assets/characters/chunxinxin.jpg`.
+- The old one-sided permanent trap problem has been removed. Standard stages place snares and major hazards as mirrored pairs, and trapped characters can escape by pressing movement keys or `Z`/`Space`.
 - Historical project notes are excluded from deployment through `.vercelignore`; keep them out of any public storefront or marketing bundle.
 
 ## Local Preview
