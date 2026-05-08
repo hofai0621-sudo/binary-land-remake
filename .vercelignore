@@ -1,0 +1,4 @@
+*.md
+AGENTS.md
+.claude
+.claude/**

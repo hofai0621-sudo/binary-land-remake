@@ -1,14 +1,14 @@
-# Binary Land Remake - Web
+# Lumapair
 
-Browser-playable Canvas port of the Binary Land Remake prototype.
+Original browser-playable twin-signal puzzle built with HTML5 Canvas.
 
-Live site: [https://binary-land-remake.vercel.app](https://binary-land-remake.vercel.app)
+Live site target: Vercel static deployment.
 
-## Records
+## Current Commercialization Status
 
-- Installation and deployment notes: [vercel_deployment_installation_2026-05-05.md](./vercel_deployment_installation_2026-05-05.md)
-- Deployment diary: [binary_land_vercel_deployment_diary_2026-05-05.md](./binary_land_vercel_deployment_diary_2026-05-05.md)
-- Hard-mode playtest diary: [binary_land_playtest_diary_2026-05-05.md](./binary_land_playtest_diary_2026-05-05.md)
+- Public-facing title, metadata, character names, visual language, enemies, traps, items, and help text have been changed to the original `Lumapair` concept.
+- The old one-sided permanent trap problem has been removed. Standard stages now place snares and major hazards as mirrored pairs, and trapped runners can escape by pressing movement keys or `Z`/`Space`.
+- Historical project notes are excluded from deployment through `.vercelignore`; keep them out of any public storefront or marketing bundle.
 
 ## Local Preview
 
@@ -25,3 +25,5 @@ This is a static site and can be deployed directly to Vercel from the project ro
 ```bash
 npx vercel --prod
 ```
+
+Before selling publicly, complete the checklist in [ORIGINALITY_AND_COMMERCIALIZATION_PLAN.md](./ORIGINALITY_AND_COMMERCIALIZATION_PLAN.md).

@@ -20,8 +20,8 @@
 
   const LEFT_GOAL = [6, 0];
   const RIGHT_GOAL = [8, 0];
-  const GURIN_START = [2, 9];
-  const MALON_START = [12, 9];
+  const NOVA_START = [2, 9];
+  const VEGA_START = [12, 9];
 
   const STATE_TITLE = "title";
   const STATE_HELP = "help";
@@ -38,25 +38,26 @@
     ["ArrowUp", [0, -1]],
     ["ArrowDown", [0, 1]],
   ]);
+  const TRAP_ESCAPE_STEPS = 4;
 
   const DIFFICULTIES = {
     easy: {
       label: "簡單 Easy",
       time: 125,
-      spider: 0.72,
-      fire: 0.58,
+      drone: 0.72,
+      bolt: 0.58,
     },
     normal: {
       label: "普通 Normal",
       time: 105,
-      spider: 0.56,
-      fire: 0.46,
+      drone: 0.56,
+      bolt: 0.46,
     },
     hard: {
       label: "困難 Hard",
       time: 90,
-      spider: 0.42,
-      fire: 0.36,
+      drone: 0.42,
+      bolt: 0.36,
     },
   };
 
@@ -69,30 +70,30 @@
     wallHi: "#6688e2",
     centerWall: "#26305c",
     goal: "#ffd662",
-    heart: "#ff5082",
+    core: "#ff5082",
     text: "#eef2ff",
     muted: "#a0accc",
     danger: "#ff5c50",
-    gurin: "#46d673",
-    malon: "#ff80b9",
+    nova: "#46d673",
+    vega: "#ff80b9",
     white: "#f5f7ff",
     black: "#080a10",
     yellow: "#ffdc5c",
-    spray: "#8ef0ff",
-    web: "#c6cde0",
-    fire: "#ff6e28",
-    bird: "#ff66c4",
+    pulse: "#8ef0ff",
+    snare: "#c6cde0",
+    bolt: "#ff6e28",
+    switcher: "#ff66c4",
   };
 
-  const ITEM_TYPES = ["cake", "umbrella", "harp", "card", "whale"];
+  const ITEM_TYPES = ["battery", "shield", "metronome", "scanner", "prism"];
   const ITEM_LABELS = {
-    cake: "蛋糕 Cake",
-    umbrella: "雨傘 Umbrella",
-    harp: "豎琴 Harp",
-    card: "卡片 Card",
-    whale: "鯨魚卡 Whale",
-    life: "額外生命 1UP",
-    score: "高分道具 Bonus",
+    battery: "能量電池 Battery",
+    shield: "緩速護盾 Shield",
+    metronome: "節拍核心 Metronome",
+    scanner: "掃描模組 Scanner",
+    prism: "稜鏡護場 Prism",
+    life: "備用核心 1UP",
+    score: "資料庫 Bonus",
   };
 
   const LEVEL_WALLS = [
@@ -217,8 +218,8 @@
     const protectedCells = new Set([
       cellKey(LEFT_GOAL),
       cellKey(RIGHT_GOAL),
-      cellKey(GURIN_START),
-      cellKey(MALON_START),
+      cellKey(NOVA_START),
+      cellKey(VEGA_START),
     ]);
 
     for (const [x, y] of walls) {
@@ -232,7 +233,7 @@
     }
 
     let layout = rows.map((row) => row.join(""));
-    if (!reachable(layout, GURIN_START, LEFT_GOAL)) {
+    if (!reachable(layout, NOVA_START, LEFT_GOAL)) {
       for (let y = 1; y < ROWS; y += 1) {
         for (let x = 0; x < CENTER_COL; x += 1) {
           if (y === MID_ROW && x !== LEFT_GAP) continue;
@@ -242,7 +243,7 @@
     }
 
     layout = rows.map((row) => row.join(""));
-    if (!reachable(layout, MALON_START, RIGHT_GOAL)) {
+    if (!reachable(layout, VEGA_START, RIGHT_GOAL)) {
       for (let y = 1; y < ROWS; y += 1) {
         for (let x = CENTER_COL + 1; x < COLS; x += 1) {
           if (y === MID_ROW && x !== RIGHT_GAP) continue;
@@ -267,7 +268,23 @@
         }
       }
     }
-    return [...GURIN_START];
+    return [...NOVA_START];
+  }
+
+  function reserveNearest(layout, pos, reserved) {
+    const floor = nearestFloor(layout, pos, reserved);
+    reserved.add(cellKey(floor));
+    return floor;
+  }
+
+  function balancedPairPositions(layout, leftSeeds, countPerSide, reserved) {
+    const positions = [];
+    for (let i = 0; i < countPerSide; i += 1) {
+      const seed = leftSeeds[i % leftSeeds.length];
+      positions.push(reserveNearest(layout, seed, reserved));
+      positions.push(reserveNearest(layout, mirrorCell(seed), reserved));
+    }
+    return positions;
   }
 
   function makeLevel(number) {
@@ -275,54 +292,60 @@
     const reserved = new Set([
       cellKey(LEFT_GOAL),
       cellKey(RIGHT_GOAL),
-      cellKey(GURIN_START),
-      cellKey(MALON_START),
+      cellKey(NOVA_START),
+      cellKey(VEGA_START),
     ]);
 
-    const webSeeds = [
+    const snareSeeds = [
       [(1 + number) % 6, 3 + (number % 5)],
       [5, 5 + (number % 4)],
-      [9 + (number % 5), 2 + (number % 6)],
-      [13, 4 + (number % 4)],
+      [2 + ((number * 3) % 4), 1 + ((number * 2) % 7)],
     ];
-    const webCount = 2 + Math.min(2, Math.floor(number / 3));
-    const webs = new Set(webSeeds.slice(0, webCount).map((pos) => cellKey(nearestFloor(layout, pos, reserved))));
-    for (const web of webs) reserved.add(web);
+    const snarePairs = 1 + (number >= 4 ? 1 : 0) + (number >= 8 ? 1 : 0);
+    const snares = new Set(balancedPairPositions(layout, snareSeeds, snarePairs, reserved).map(cellKey));
 
-    const spiderCount = 2 + Math.min(3, Math.floor(number / 3));
-    const spiderSeeds = [];
-    for (let i = 0; i < spiderCount; i += 1) {
-      spiderSeeds.push([1 + ((number * 2 + i) % 6), 1 + ((number + i * 2) % 8)]);
+    const droneSeeds = [
+      [1 + ((number * 2) % 6), 1 + (number % 8)],
+      [1 + ((number + 3) % 6), 1 + ((number * 2) % 8)],
+      [1 + ((number * 5) % 6), 1 + ((number + 5) % 8)],
+    ];
+    const dronePairs = 1 + (number >= 3 ? 1 : 0) + (number >= 7 ? 1 : 0);
+    const drones = balancedPairPositions(layout, droneSeeds, dronePairs, reserved);
+
+    const surges = [];
+    if (number >= 3) {
+      const leftSeed = [4, 1 + (number % 7)];
+      surges.push({ pos: reserveNearest(layout, leftSeed, reserved), direction: [0, 1], timer: 0 });
+      surges.push({ pos: reserveNearest(layout, mirrorCell(leftSeed), reserved), direction: [0, -1], timer: 0 });
     }
-    for (let i = 0; i < spiderCount; i += 1) {
-      spiderSeeds.push([9 + ((number + i * 3) % 6), 1 + ((number * 2 + i) % 8)]);
+    if (number >= 7) {
+      const leftSeed = [2 + (number % 3), 2 + ((number * 2) % 6)];
+      surges.push({ pos: reserveNearest(layout, leftSeed, reserved), direction: [1, 0], timer: 0 });
+      surges.push({ pos: reserveNearest(layout, mirrorCell(leftSeed), reserved), direction: [-1, 0], timer: 0 });
     }
-    const spiders = spiderSeeds.slice(0, spiderCount).map((pos) => nearestFloor(layout, pos, reserved));
-    for (const pos of spiders) reserved.add(cellKey(pos));
 
-    const fireballs = [];
-    if (number >= 3) fireballs.push({ pos: nearestFloor(layout, [4, 1 + (number % 7)], reserved), direction: [0, 1], timer: 0 });
-    if (number >= 6) fireballs.push({ pos: nearestFloor(layout, [11, 2 + (number % 6)], reserved), direction: [0, -1], timer: 0 });
-    for (const fireball of fireballs) reserved.add(cellKey(fireball.pos));
+    const switchers = [];
+    if (number >= 9) {
+      const leftSeed = [2, 5];
+      switchers.push({ pos: reserveNearest(layout, leftSeed, reserved), direction: [1, 0], timer: 0, cooldown: 0 });
+      switchers.push({ pos: reserveNearest(layout, mirrorCell(leftSeed), reserved), direction: [-1, 0], timer: 0, cooldown: 0 });
+    }
 
-    const birds = [];
-    if (number >= 9) birds.push({ pos: nearestFloor(layout, [12, 5], reserved), direction: [-1, 0], timer: 0, cooldown: 0 });
-
-    const hiddenPos = nearestFloor(layout, [1 + (number % 5), 2 + ((number * 2) % 6)], reserved);
+    const hiddenPos = reserveNearest(layout, [1 + (number % 5), 2 + ((number * 2) % 6)], reserved);
     const hiddenKind = new Set([3, 8]).has(number) ? "life" : "score";
 
     return {
       number,
-      name: `LOVE MAZE ${number}`,
+      name: `SYNC MAZE ${number}`,
       layout,
-      webs,
-      spiders,
-      fireballs,
-      birds,
+      snares,
+      drones,
+      surges,
+      switchers,
       hiddenPos,
       hiddenKind,
       bonus: false,
-      bonusHearts: new Set(),
+      bonusCores: new Set(),
     };
   }
 
@@ -331,39 +354,45 @@
     const reserved = new Set([
       cellKey(LEFT_GOAL),
       cellKey(RIGHT_GOAL),
-      cellKey(GURIN_START),
-      cellKey(MALON_START),
+      cellKey(NOVA_START),
+      cellKey(VEGA_START),
     ]);
-    const heartSeeds = [
+    const coreSeeds = [
       [1, 1], [3, 2], [5, 4], [2, 6], [4, 8],
       [9, 1], [11, 3], [13, 2], [10, 6], [12, 8],
     ];
-    const hearts = new Set(heartSeeds.map((pos) => cellKey(nearestFloor(layout, pos, reserved))));
+    const cores = new Set(coreSeeds.map((pos) => cellKey(nearestFloor(layout, pos, reserved))));
     return {
       number: afterLevel,
-      name: `BONUS LOVE ${afterLevel}`,
+      name: `BONUS SYNC ${afterLevel}`,
       layout,
-      webs: new Set([cellKey(MALON_START)]),
-      spiders: [],
-      fireballs: [],
-      birds: [],
+      snares: new Set(),
+      drones: [],
+      surges: [],
+      switchers: [],
       hiddenPos: [1, 1],
       hiddenKind: "score",
       bonus: true,
-      bonusHearts: hearts,
+      bonusCores: cores,
     };
   }
 
-  function drawHeart(context, [x, y], size, color) {
-    const r = Math.max(2, Math.floor(size / 4));
+  function drawCore(context, [x, y], size, color) {
+    const r = Math.max(5, Math.floor(size / 2));
     context.fillStyle = color;
     context.beginPath();
-    context.arc(x - r, y - r, r, Math.PI, 0);
-    context.arc(x + r, y - r, r, Math.PI, 0);
-    context.lineTo(x + 2 * r, y - Math.floor(r / 2));
-    context.lineTo(x, y + 2 * r);
-    context.lineTo(x - 2 * r, y - Math.floor(r / 2));
+    context.moveTo(x, y - r);
+    context.lineTo(x + r, y);
+    context.lineTo(x, y + r);
+    context.lineTo(x - r, y);
     context.closePath();
+    context.fill();
+    context.strokeStyle = COLORS.white;
+    context.lineWidth = Math.max(1, Math.floor(size / 12));
+    context.stroke();
+    context.fillStyle = "rgba(255, 255, 255, 0.75)";
+    context.beginPath();
+    context.arc(x, y, Math.max(2, Math.floor(size / 8)), 0, Math.PI * 2);
     context.fill();
   }
 
@@ -382,16 +411,16 @@
     context.closePath();
   }
 
-  class BinaryLandGame {
+  class LumapairGame {
     constructor() {
       this.keysDown = new Set();
       this.heldOrder = [];
       this.running = true;
       this.state = STATE_TITLE;
-      this.primary = "Gurin";
+      this.primary = "Nova";
       this.difficulty = "normal";
-      this.loveBuffer = "";
-      this.loveMode = false;
+      this.syncBuffer = "";
+      this.syncMode = false;
       this.highScore = this.loadHighScore();
 
       this.score = 0;
@@ -401,25 +430,25 @@
       this.bonusAfter = 0;
 
       this.level = makeLevel(1);
-      this.gurin = this.makePenguin("Gurin", COLORS.gurin, GURIN_START);
-      this.malon = this.makePenguin("Malon", COLORS.malon, MALON_START);
-      this.webs = new Set();
-      this.spiders = [];
-      this.fireballs = [];
-      this.birds = [];
+      this.nova = this.makeRunner("Nova", COLORS.nova, NOVA_START);
+      this.vega = this.makeRunner("Vega", COLORS.vega, VEGA_START);
+      this.snares = new Set();
+      this.drones = [];
+      this.surges = [];
+      this.switchers = [];
       this.items = [];
-      this.bonusHearts = new Set();
+      this.bonusCores = new Set();
       this.hiddenRevealed = false;
       this.hiddenCollected = false;
 
       this.timeLeft = 100;
       this.elapsedStage = 0;
       this.moveCooldown = 0;
-      this.sprayCooldown = 0;
-      this.sprays = [];
+      this.pulseCooldown = 0;
+      this.pulses = [];
 
       this.enemySlowTimer = 0;
-      this.fireFreezeTimer = 0;
+      this.boltFreezeTimer = 0;
       this.invincibleTimer = 0;
       this.message = "";
       this.messageTimer = 0;
@@ -428,19 +457,20 @@
       this.lastTime = performance.now();
     }
 
-    makePenguin(name, color, pos) {
+    makeRunner(name, color, pos) {
       return {
         name,
         color,
         pos: [...pos],
         facing: [0, -1],
         trapped: false,
+        trapEscape: 0,
       };
     }
 
     loadHighScore() {
       try {
-        return Number.parseInt(localStorage.getItem("binary-land-high-score") || "0", 10) || 0;
+        return Number.parseInt(localStorage.getItem("lumapair-high-score") || "0", 10) || 0;
       } catch {
         return 0;
       }
@@ -450,7 +480,7 @@
       if (this.score <= this.highScore) return;
       this.highScore = this.score;
       try {
-        localStorage.setItem("binary-land-high-score", String(this.highScore));
+        localStorage.setItem("lumapair-high-score", String(this.highScore));
       } catch {
         // Local storage can be blocked in private contexts; the game still runs.
       }
@@ -468,44 +498,38 @@
 
     loadStage() {
       this.level = this.stageIsBonus ? makeBonusLevel(this.bonusAfter) : makeLevel(this.levelNo);
-      const gurinName = this.loveMode ? "Ryan" : "Gurin";
-      const malonName = this.loveMode ? "Codex" : "Malon";
-      this.gurin = this.makePenguin(gurinName, COLORS.gurin, GURIN_START);
-      this.malon = this.makePenguin(malonName, COLORS.malon, MALON_START);
+      const novaName = this.syncMode ? "Astra" : "Nova";
+      const vegaName = this.syncMode ? "Umbra" : "Vega";
+      this.nova = this.makeRunner(novaName, COLORS.nova, NOVA_START);
+      this.vega = this.makeRunner(vegaName, COLORS.vega, VEGA_START);
 
-      if (this.level.bonus) {
-        this.malon.trapped = true;
-        this.malon.facing = [-1, 0];
-        this.gurin.facing = [-1, 0];
-      }
-
-      this.webs = new Set(this.level.webs);
-      this.spiders = this.level.spiders.map((pos) => ({ pos: [...pos], timer: Math.random() * 0.4 }));
-      this.fireballs = this.level.fireballs.map((fireball) => ({
-        pos: [...fireball.pos],
-        direction: [...fireball.direction],
+      this.snares = new Set(this.level.snares);
+      this.drones = this.level.drones.map((pos) => ({ pos: [...pos], timer: Math.random() * 0.4 }));
+      this.surges = this.level.surges.map((surge) => ({
+        pos: [...surge.pos],
+        direction: [...surge.direction],
         timer: Math.random() * 0.3,
       }));
-      this.birds = this.level.birds.map((bird) => ({
-        pos: [...bird.pos],
-        direction: [...bird.direction],
+      this.switchers = this.level.switchers.map((switcher) => ({
+        pos: [...switcher.pos],
+        direction: [...switcher.direction],
         timer: 0,
         cooldown: 0,
       }));
       this.items = [];
-      this.bonusHearts = new Set(this.level.bonusHearts);
+      this.bonusCores = new Set(this.level.bonusCores);
       this.hiddenRevealed = false;
       this.hiddenCollected = false;
 
       this.timeLeft = this.level.bonus ? 45 : DIFFICULTIES[this.difficulty].time;
       this.elapsedStage = 0;
       this.moveCooldown = 0;
-      this.sprayCooldown = 0;
-      this.sprays = [];
+      this.pulseCooldown = 0;
+      this.pulses = [];
       this.enemySlowTimer = 0;
-      this.fireFreezeTimer = 0;
+      this.boltFreezeTimer = 0;
       this.invincibleTimer = 0;
-      this.message = this.level.bonus ? "Bonus Stage: 先救出 Malon!" : "";
+      this.message = this.level.bonus ? "Bonus Stage: 收集所有同步核心!" : "";
       this.messageTimer = this.level.bonus ? 3 : 0;
     }
 
@@ -565,10 +589,10 @@
           this.newGame();
         } else if (code === "KeyH") {
           this.state = STATE_HELP;
-        } else if (code === "KeyG") {
-          this.primary = "Gurin";
-        } else if (code === "KeyM") {
-          this.primary = "Malon";
+        } else if (code === "KeyN") {
+          this.primary = "Nova";
+        } else if (code === "KeyV") {
+          this.primary = "Vega";
         } else if (code === "Digit1") {
           this.difficulty = "easy";
         } else if (code === "Digit2") {
@@ -576,10 +600,10 @@
         } else if (code === "Digit3") {
           this.difficulty = "hard";
         } else if (/^[a-z]$/i.test(key)) {
-          this.loveBuffer = (this.loveBuffer + key.toLowerCase()).slice(-8);
-          if (this.loveBuffer.endsWith("love")) {
-            this.loveMode = !this.loveMode;
-            this.message = this.loveMode ? "Love Story mode ON" : "Love Story mode OFF";
+          this.syncBuffer = (this.syncBuffer + key.toLowerCase()).slice(-8);
+          if (this.syncBuffer.endsWith("sync")) {
+            this.syncMode = !this.syncMode;
+            this.message = this.syncMode ? "Sync Story mode ON" : "Sync Story mode OFF";
             this.messageTimer = 2;
           }
         }
@@ -589,7 +613,7 @@
         if (code === "KeyP") {
           this.state = STATE_PAUSED;
         } else if (code === "KeyZ" || code === "Space") {
-          this.spray();
+          this.pulse();
         }
       } else if (this.state === STATE_PAUSED) {
         if (code === "KeyP") {
@@ -625,85 +649,127 @@
       const [dx, dy] = inputVec;
       const normal = [dx, dy];
       const mirrored = dx ? [-dx, dy] : [0, dy];
-      return this.primary === "Gurin" ? [normal, mirrored] : [mirrored, normal];
+      return this.primary === "Nova" ? [normal, mirrored] : [mirrored, normal];
     }
 
-    movePenguins(inputVec) {
-      const [gurinVec, malonVec] = this.actualVectors(inputVec);
-      const oldG = [...this.gurin.pos];
-      const oldM = [...this.malon.pos];
-      let newG = oldG;
-      let newM = oldM;
-
-      if (!this.gurin.trapped) {
-        this.gurin.facing = gurinVec;
-        const candidate = addPos(oldG, gurinVec);
-        if (this.isPassable(candidate)) newG = candidate;
-      }
-
-      if (!this.malon.trapped) {
-        this.malon.facing = malonVec;
-        const candidate = addPos(oldM, malonVec);
-        if (this.isPassable(candidate)) newM = candidate;
-      }
-
-      if (sameCell(newG, newM)) {
-        newG = oldG;
-        newM = oldM;
-      } else if (sameCell(newG, oldM) && sameCell(newM, oldM)) {
-        newG = oldG;
-      } else if (sameCell(newM, oldG) && sameCell(newG, oldG)) {
-        newM = oldM;
-      }
-
-      this.gurin.pos = newG;
-      this.malon.pos = newM;
-      this.afterPenguinPositionsChanged();
+    trapRunner(runner) {
+      if (!runner.trapped) runner.trapEscape = 0;
+      runner.trapped = true;
+      this.message = `${runner.name} 被靜滯場困住，按方向或 Z 充能掙脫!`;
+      this.messageTimer = 1.8;
     }
 
-    afterPenguinPositionsChanged() {
-      for (const penguin of [this.gurin, this.malon]) {
-        if (this.webs.has(cellKey(penguin.pos))) {
-          penguin.trapped = true;
-          this.message = `${penguin.name} 被蛛網困住!`;
-          this.messageTimer = 1.6;
+    freeRunner(runner, message = `${runner.name} 掙脫靜滯場!`) {
+      const key = cellKey(runner.pos);
+      if (this.snares.has(key)) this.snares.delete(key);
+      runner.trapped = false;
+      runner.trapEscape = 0;
+      this.score += 80;
+      this.message = message;
+      this.messageTimer = 1.4;
+    }
+
+    struggleRunner(runner, amount = 1) {
+      if (!runner.trapped) return false;
+      runner.trapEscape = Math.min(TRAP_ESCAPE_STEPS, runner.trapEscape + amount);
+      if (runner.trapEscape >= TRAP_ESCAPE_STEPS) {
+        this.freeRunner(runner);
+      } else {
+        this.message = `${runner.name} 掙脫中 ${runner.trapEscape}/${TRAP_ESCAPE_STEPS}`;
+        this.messageTimer = 0.8;
+      }
+      return true;
+    }
+
+    moveRunners(inputVec) {
+      const [novaVec, vegaVec] = this.actualVectors(inputVec);
+      const oldNova = [...this.nova.pos];
+      const oldVega = [...this.vega.pos];
+      let newNova = oldNova;
+      let newVega = oldVega;
+
+      if (!this.nova.trapped) {
+        this.nova.facing = novaVec;
+        const candidate = addPos(oldNova, novaVec);
+        if (this.isPassable(candidate)) newNova = candidate;
+      } else {
+        this.nova.facing = novaVec;
+        this.struggleRunner(this.nova);
+      }
+
+      if (!this.vega.trapped) {
+        this.vega.facing = vegaVec;
+        const candidate = addPos(oldVega, vegaVec);
+        if (this.isPassable(candidate)) newVega = candidate;
+      } else {
+        this.vega.facing = vegaVec;
+        this.struggleRunner(this.vega);
+      }
+
+      if (sameCell(newNova, newVega)) {
+        newNova = oldNova;
+        newVega = oldVega;
+      } else if (sameCell(newNova, oldVega) && sameCell(newVega, oldVega)) {
+        newNova = oldNova;
+      } else if (sameCell(newVega, oldNova) && sameCell(newNova, oldNova)) {
+        newVega = oldVega;
+      }
+
+      this.nova.pos = newNova;
+      this.vega.pos = newVega;
+      this.afterRunnerPositionsChanged();
+    }
+
+    afterRunnerPositionsChanged() {
+      for (const runner of [this.nova, this.vega]) {
+        if (this.snares.has(cellKey(runner.pos))) {
+          this.trapRunner(runner);
         }
-        this.collectAt(penguin.pos);
+        this.collectAt(runner.pos);
       }
 
-      if (this.gurin.trapped && this.malon.trapped) {
-        this.loseLife("兩隻企鵝同時被困，失敗!");
-        return;
+      if (this.nova.trapped && this.vega.trapped) {
+        this.message = "兩名訊號員同時被困，連按方向或 Z 掙脫!";
+        this.messageTimer = 1.4;
       }
 
       this.checkCollisions();
       this.checkStageGoal();
     }
 
-    spray() {
-      if (this.sprayCooldown > 0 || this.state !== STATE_PLAYING) return;
-      this.sprayCooldown = 0.22;
+    pulse() {
+      if (this.pulseCooldown > 0 || this.state !== STATE_PLAYING) return;
+      this.pulseCooldown = 0.22;
 
-      for (const penguin of [this.gurin, this.malon]) {
-        if (penguin.trapped) continue;
-        const target = addPos(penguin.pos, penguin.facing);
+      for (const runner of [this.nova, this.vega]) {
+        if (runner.trapped) {
+          this.struggleRunner(runner, 2);
+          continue;
+        }
+        const target = addPos(runner.pos, runner.facing);
         if (!inBounds(target)) continue;
-        this.sprays.push({ origin: [...penguin.pos], target, timer: 0.14 });
-        this.applySprayToCell(target, true);
+        this.pulses.push({ origin: [...runner.pos], target, timer: 0.14 });
+        this.applyPulseToCell(target, true);
 
         const mirror = mirrorCell(target);
-        if (!sameCell(mirror, target)) this.applySprayToCell(mirror, false);
+        if (!sameCell(mirror, target)) this.applyPulseToCell(mirror, false);
       }
     }
 
-    applySprayToCell(cell, allowAttack) {
+    applyPulseToCell(cell, allowAttack) {
       const key = cellKey(cell);
-      if (this.webs.has(key)) {
-        this.webs.delete(key);
-        if (sameCell(this.gurin.pos, cell)) this.gurin.trapped = false;
-        if (sameCell(this.malon.pos, cell)) this.malon.trapped = false;
+      if (this.snares.has(key)) {
+        this.snares.delete(key);
+        if (sameCell(this.nova.pos, cell)) {
+          this.nova.trapped = false;
+          this.nova.trapEscape = 0;
+        }
+        if (sameCell(this.vega.pos, cell)) {
+          this.vega.trapped = false;
+          this.vega.trapEscape = 0;
+        }
         this.score += 120;
-        this.message = "蛛網被殺蟲劑溶解!";
+        this.message = "靜滯場被脈衝打散!";
         this.messageTimer = 1.4;
       }
 
@@ -712,20 +778,20 @@
       }
 
       if (allowAttack) {
-        for (const spider of [...this.spiders]) {
-          if (sameCell(spider.pos, cell)) this.killSpider(spider);
+        for (const drone of [...this.drones]) {
+          if (sameCell(drone.pos, cell)) this.killDrone(drone);
         }
       }
     }
 
-    killSpider(spider) {
-      const index = this.spiders.indexOf(spider);
+    killDrone(drone) {
+      const index = this.drones.indexOf(drone);
       if (index === -1) return;
-      this.spiders.splice(index, 1);
+      this.drones.splice(index, 1);
       this.score += 250;
       const kind = randomChoice(ITEM_TYPES);
-      this.items.push({ kind, pos: [...spider.pos], life: 12 });
-      this.message = `蜘蛛消滅! 掉落 ${ITEM_LABELS[kind]}`;
+      this.items.push({ kind, pos: [...drone.pos], life: 12 });
+      this.message = `巡邏器停止! 掉落 ${ITEM_LABELS[kind]}`;
       this.messageTimer = 1.6;
     }
 
@@ -741,9 +807,9 @@
     collectAt(pos) {
       if (sameCell(pos, this.level.hiddenPos) && !this.hiddenCollected) this.revealHiddenItem();
 
-      const heartKey = cellKey(pos);
-      if (this.bonusHearts.has(heartKey)) {
-        this.bonusHearts.delete(heartKey);
+      const coreKey = cellKey(pos);
+      if (this.bonusCores.has(coreKey)) {
+        this.bonusCores.delete(coreKey);
         this.score += 150;
       }
 
@@ -756,18 +822,18 @@
     }
 
     applyItem(kind) {
-      if (kind === "cake") {
+      if (kind === "battery") {
         this.score += 300;
-      } else if (kind === "umbrella") {
+      } else if (kind === "shield") {
         this.score += 500;
         this.enemySlowTimer = 8;
-      } else if (kind === "harp") {
+      } else if (kind === "metronome") {
         this.score += 800;
-        this.fireFreezeTimer = 5;
-      } else if (kind === "card") {
+        this.boltFreezeTimer = 5;
+      } else if (kind === "scanner") {
         this.score += 1000;
         if (!this.hiddenCollected) this.revealHiddenItem();
-      } else if (kind === "whale") {
+      } else if (kind === "prism") {
         this.score += 1500;
         this.invincibleTimer = 8;
       } else if (kind === "life") {
@@ -783,35 +849,35 @@
     checkCollisions() {
       if (this.state !== STATE_PLAYING) return;
 
-      for (const penguin of [this.gurin, this.malon]) {
-        for (const spider of [...this.spiders]) {
-          if (sameCell(spider.pos, penguin.pos)) {
+      for (const runner of [this.nova, this.vega]) {
+        for (const drone of [...this.drones]) {
+          if (sameCell(drone.pos, runner.pos)) {
             if (this.invincibleTimer > 0) {
-              this.killSpider(spider);
+              this.killDrone(drone);
             } else {
-              this.loseLife(`${penguin.name} 碰到蜘蛛!`);
+              this.loseLife(`${runner.name} 碰到巡邏器!`);
               return;
             }
           }
         }
 
-        for (const fireball of this.fireballs) {
-          if (sameCell(fireball.pos, penguin.pos) && this.invincibleTimer <= 0) {
-            this.loseLife(`${penguin.name} 碰到火球!`);
+        for (const surge of this.surges) {
+          if (sameCell(surge.pos, runner.pos) && this.invincibleTimer <= 0) {
+            this.loseLife(`${runner.name} 碰到能量浪湧!`);
             return;
           }
         }
 
-        for (const bird of this.birds) {
-          if (bird.cooldown <= 0 && sameCell(bird.pos, penguin.pos)) {
-            const gurinPos = this.gurin.pos;
-            this.gurin.pos = this.malon.pos;
-            this.malon.pos = gurinPos;
-            bird.cooldown = 1.2;
-            this.message = "粉紅鳥作怪：兩隻企鵝交換位置!";
+        for (const switcher of this.switchers) {
+          if (switcher.cooldown <= 0 && sameCell(switcher.pos, runner.pos)) {
+            const novaPos = this.nova.pos;
+            this.nova.pos = this.vega.pos;
+            this.vega.pos = novaPos;
+            switcher.cooldown = 1.2;
+            this.message = "相位轉換器啟動：兩名訊號員交換位置!";
             this.messageTimer = 2;
-            for (const candidate of [this.gurin, this.malon]) {
-              if (this.webs.has(cellKey(candidate.pos))) candidate.trapped = true;
+            for (const candidate of [this.nova, this.vega]) {
+              if (this.snares.has(cellKey(candidate.pos))) this.trapRunner(candidate);
             }
             return;
           }
@@ -820,11 +886,11 @@
     }
 
     checkStageGoal() {
-      if (this.gurin.trapped || this.malon.trapped) return;
+      if (this.nova.trapped || this.vega.trapped) return;
       const bothAtGoal =
-        (sameCell(this.gurin.pos, LEFT_GOAL) && sameCell(this.malon.pos, RIGHT_GOAL)) ||
-        (sameCell(this.gurin.pos, RIGHT_GOAL) && sameCell(this.malon.pos, LEFT_GOAL));
-      if (this.level.bonus && bothAtGoal && this.bonusHearts.size === 0) {
+        (sameCell(this.nova.pos, LEFT_GOAL) && sameCell(this.vega.pos, RIGHT_GOAL)) ||
+        (sameCell(this.nova.pos, RIGHT_GOAL) && sameCell(this.vega.pos, LEFT_GOAL));
+      if (this.level.bonus && bothAtGoal && this.bonusCores.size === 0) {
         this.clearStage();
       } else if (!this.level.bonus && bothAtGoal) {
         this.clearStage();
@@ -860,14 +926,14 @@
       }
 
       this.moveCooldown = Math.max(0, this.moveCooldown - dt);
-      this.sprayCooldown = Math.max(0, this.sprayCooldown - dt);
+      this.pulseCooldown = Math.max(0, this.pulseCooldown - dt);
       this.enemySlowTimer = Math.max(0, this.enemySlowTimer - dt);
-      this.fireFreezeTimer = Math.max(0, this.fireFreezeTimer - dt);
+      this.boltFreezeTimer = Math.max(0, this.boltFreezeTimer - dt);
       this.invincibleTimer = Math.max(0, this.invincibleTimer - dt);
 
-      for (const spray of [...this.sprays]) {
-        spray.timer -= dt;
-        if (spray.timer <= 0) this.sprays.splice(this.sprays.indexOf(spray), 1);
+      for (const pulse of [...this.pulses]) {
+        pulse.timer -= dt;
+        if (pulse.timer <= 0) this.pulses.splice(this.pulses.indexOf(pulse), 1);
       }
 
       for (const item of [...this.items]) {
@@ -879,62 +945,62 @@
 
       const direction = this.currentDirection();
       if (direction && this.moveCooldown <= 0) {
-        this.movePenguins(direction);
+        this.moveRunners(direction);
         this.moveCooldown = this.invincibleTimer > 0 ? 0.08 : 0.135;
         if (this.state !== STATE_PLAYING) return;
       }
 
-      this.updateSpiders(dt);
-      this.updateFireballs(dt);
-      this.updateBirds(dt);
+      this.updateDrones(dt);
+      this.updateSurges(dt);
+      this.updateSwitchers(dt);
       this.checkCollisions();
       if (this.state === STATE_PLAYING) this.checkStageGoal();
     }
 
-    updateSpiders(dt) {
-      if (!this.spiders.length) return;
-      const base = DIFFICULTIES[this.difficulty].spider;
+    updateDrones(dt) {
+      if (!this.drones.length) return;
+      const base = DIFFICULTIES[this.difficulty].drone;
       const speedup = Math.min(0.28, this.elapsedStage / 230);
       let interval = Math.max(0.18, base - speedup);
       if (this.enemySlowTimer > 0) interval *= 1.7;
 
-      for (const spider of this.spiders) {
-        spider.timer += dt;
-        if (spider.timer < interval) continue;
-        spider.timer = 0;
-        const choices = [...DIR_VECTORS.values()].map((vec) => addPos(spider.pos, vec)).filter((pos) => this.isPassable(pos));
-        if (choices.length) spider.pos = randomChoice(choices);
+      for (const drone of this.drones) {
+        drone.timer += dt;
+        if (drone.timer < interval) continue;
+        drone.timer = 0;
+        const choices = [...DIR_VECTORS.values()].map((vec) => addPos(drone.pos, vec)).filter((pos) => this.isPassable(pos));
+        if (choices.length) drone.pos = randomChoice(choices);
       }
     }
 
-    updateFireballs(dt) {
-      if (this.fireFreezeTimer > 0) return;
-      const interval = DIFFICULTIES[this.difficulty].fire;
-      for (const fireball of this.fireballs) {
-        fireball.timer += dt;
-        if (fireball.timer < interval) continue;
-        fireball.timer = 0;
-        let candidate = addPos(fireball.pos, fireball.direction);
+    updateSurges(dt) {
+      if (this.boltFreezeTimer > 0) return;
+      const interval = DIFFICULTIES[this.difficulty].bolt;
+      for (const surge of this.surges) {
+        surge.timer += dt;
+        if (surge.timer < interval) continue;
+        surge.timer = 0;
+        let candidate = addPos(surge.pos, surge.direction);
         if (!this.isPassable(candidate)) {
-          fireball.direction = [-fireball.direction[0], -fireball.direction[1]];
-          candidate = addPos(fireball.pos, fireball.direction);
+          surge.direction = [-surge.direction[0], -surge.direction[1]];
+          candidate = addPos(surge.pos, surge.direction);
         }
-        if (this.isPassable(candidate)) fireball.pos = candidate;
+        if (this.isPassable(candidate)) surge.pos = candidate;
       }
     }
 
-    updateBirds(dt) {
-      for (const bird of this.birds) {
-        bird.cooldown = Math.max(0, bird.cooldown - dt);
-        bird.timer += dt;
-        if (bird.timer < 0.48) continue;
-        bird.timer = 0;
-        let candidate = addPos(bird.pos, bird.direction);
+    updateSwitchers(dt) {
+      for (const switcher of this.switchers) {
+        switcher.cooldown = Math.max(0, switcher.cooldown - dt);
+        switcher.timer += dt;
+        if (switcher.timer < 0.48) continue;
+        switcher.timer = 0;
+        let candidate = addPos(switcher.pos, switcher.direction);
         if (!this.isPassable(candidate)) {
-          bird.direction = [-bird.direction[0], -bird.direction[1]];
-          candidate = addPos(bird.pos, bird.direction);
+          switcher.direction = [-switcher.direction[0], -switcher.direction[1]];
+          candidate = addPos(switcher.pos, switcher.direction);
         }
-        if (this.isPassable(candidate)) bird.pos = candidate;
+        if (this.isPassable(candidate)) switcher.pos = candidate;
       }
     }
 
@@ -965,7 +1031,7 @@
         } else if (this.state === STATE_LIFE_LOST) {
           this.drawOverlay("MISS!", this.message || "再試一次");
         } else if (this.state === STATE_LEVEL_CLEAR) {
-          this.drawLoveAnimation();
+          this.drawSyncAnimation();
         }
       } else if (this.state === STATE_GAME_OVER) {
         this.drawGameOver(false);
@@ -975,42 +1041,42 @@
     }
 
     drawTitle() {
-      this.text("Binary Land Remake", WINDOW_W / 2, 72, 46, COLORS.yellow, { center: true, bold: true });
-      this.text("企鵝先生", WINDOW_W / 2, 120, 34, COLORS.heart, { center: true, bold: true });
-      this.text("雙企鵝鏡像迷宮 / Twin Penguin Mirror Maze", WINDOW_W / 2, 158, 22, COLORS.text, { center: true });
+      this.text("Lumapair", WINDOW_W / 2, 72, 46, COLORS.yellow, { center: true, bold: true });
+      this.text("光訊號雙生迷宮", WINDOW_W / 2, 120, 34, COLORS.core, { center: true, bold: true });
+      this.text("雙人同步解謎 / Twin Signal Puzzle", WINDOW_W / 2, 158, 22, COLORS.text, { center: true });
 
       const left = 100;
       const y = 210;
-      this.text(`主要控制 Primary: ${this.primary}   [G/M 切換]`, left, y, 22);
+      this.text(`主要控制 Primary: ${this.primary}   [N/V 切換]`, left, y, 22);
       this.text(`難度 Difficulty: ${DIFFICULTIES[this.difficulty].label}   [1/2/3]`, left, y + 34, 22);
-      this.text("方向鍵移動，Z/Space 噴殺蟲劑，P 暫停", left, y + 78, 22, COLORS.muted);
+      this.text("方向鍵移動，Z/Space 發出脈衝，P 暫停", left, y + 78, 22, COLORS.muted);
       this.text("Press ENTER to Start    H: Help", left, y + 112, 22, COLORS.yellow);
-      this.text("彩蛋 Easter egg: 在標題畫面輸入 LOVE", left, y + 148, 16, COLORS.muted);
+      this.text("彩蛋 Easter egg: 在標題畫面輸入 SYNC", left, y + 148, 16, COLORS.muted);
 
-      if (this.message) this.text(this.message, WINDOW_W / 2, 452, 22, COLORS.heart, { center: true });
+      if (this.message) this.text(this.message, WINDOW_W / 2, 452, 22, COLORS.core, { center: true });
 
-      this.drawPenguinAt([154, 412], COLORS.gurin, "Gurin", [1, 0], false);
-      this.drawPenguinAt([486, 412], COLORS.malon, "Malon", [-1, 0], false);
-      drawHeart(ctx, [320, 408], 34, COLORS.heart);
+      this.drawRunnerAt([154, 412], COLORS.nova, "Nova", [1, 0], false);
+      this.drawRunnerAt([486, 412], COLORS.vega, "Vega", [-1, 0], false);
+      drawCore(ctx, [320, 408], 34, COLORS.core);
     }
 
     drawHelp() {
       const lines = [
         ["玩法說明 / How to Play", 34, COLORS.yellow, true],
         ["", 16, COLORS.text, false],
-        ["你同時控制兩隻企鵝。主要企鵝左右正常，另一隻左右相反，上下相同。", 16, COLORS.text, false],
-        ["You control both penguins at once. The partner mirrors left/right.", 16, COLORS.text, false],
+        ["你同時控制兩名訊號員。主要角色左右正常，另一名左右相反，上下相同。", 16, COLORS.text, false],
+        ["You control both runners at once. The partner mirrors left/right.", 16, COLORS.text, false],
         ["", 16, COLORS.text, false],
-        ["目標：兩隻企鵝必須同時站在上方籠中愛心左右兩格。", 16, COLORS.text, false],
-        ["Goal: stand on both sides of the caged heart at the same time.", 16, COLORS.text, false],
+        ["目標：兩名訊號員必須同時站在上方同步核心左右兩格。", 16, COLORS.text, false],
+        ["Goal: stand on both sides of the relay core at the same time.", 16, COLORS.text, false],
         ["", 16, COLORS.text, false],
-        ["Z 或 Space：向前 1 格噴殺蟲劑。可消滅蜘蛛、蛛網與救出同伴。", 16, COLORS.text, false],
-        ["Z or Space: spray one tile forward to clear spiders/webs.", 16, COLORS.text, false],
+        ["Z 或 Space：向前 1 格發出脈衝。可停止巡邏器、打散靜滯場。", 16, COLORS.text, false],
+        ["Z or Space: pulse one tile forward to clear drones and snares.", 16, COLORS.text, false],
         ["", 16, COLORS.text, false],
-        ["蛛網：踩中會被困；兩隻同時被困會扣生命。", 16, COLORS.text, false],
-        ["Fireballs cannot be killed. Pink birds after level 9 swap the penguins.", 16, COLORS.text, false],
+        ["靜滯場：踩中會被困；按方向鍵或 Z 會累積掙脫進度。", 16, COLORS.text, false],
+        ["Surges cannot be stopped. Phase switchers after level 9 swap the runners.", 16, COLORS.text, false],
         ["", 16, COLORS.text, false],
-        ["每 5 關有 Bonus Stage：救出同伴、收集所有愛心，再一起抵達目標。", 16, COLORS.text, false],
+        ["每 5 關有 Bonus Stage：收集所有同步核心，再一起抵達目標。", 16, COLORS.text, false],
         ["", 16, COLORS.text, false],
         ["按 Enter / H / Esc 返回標題。", 16, COLORS.text, false],
       ];
@@ -1032,11 +1098,11 @@
       this.text(`TIME ${String(Math.max(0, Math.floor(this.timeLeft))).padStart(3, "0")}`, 170, 48, 22, this.timeLeft < 15 ? COLORS.danger : COLORS.text);
       this.text(`PRIMARY ${this.primary}`, 320, 48, 16, COLORS.muted);
       if (this.invincibleTimer > 0) {
-        this.text("WHALE!", 520, 48, 22, COLORS.yellow);
+        this.text("PRISM", 515, 48, 22, COLORS.yellow);
       } else if (this.enemySlowTimer > 0) {
-        this.text("SLOW", 530, 48, 22, COLORS.spray);
-      } else if (this.fireFreezeTimer > 0) {
-        this.text("FREEZE", 510, 48, 22, COLORS.spray);
+        this.text("SLOW", 530, 48, 22, COLORS.pulse);
+      } else if (this.boltFreezeTimer > 0) {
+        this.text("FREEZE", 510, 48, 22, COLORS.pulse);
       }
     }
 
@@ -1056,7 +1122,7 @@
             ctx.lineWidth = 2;
             ctx.strokeRect(rectX + 1, rectY + 1, TILE - 2, TILE - 2);
           } else if (cell === "C") {
-            this.drawCagedHeart([x, y]);
+            this.drawRelayCore([x, y]);
           } else {
             ctx.strokeStyle = COLORS.grid;
             ctx.lineWidth = 1;
@@ -1067,23 +1133,23 @@
 
       this.drawGoalMarkers();
 
-      for (const heart of this.bonusHearts) {
-        const pos = heart.split(",").map(Number);
+      for (const core of this.bonusCores) {
+        const pos = core.split(",").map(Number);
         const [cx, cy] = cellCenter(pos);
         const bob = Math.sin(performance.now() * 0.008 + pos[0]) * 2;
-        drawHeart(ctx, [cx, cy + bob], 18, COLORS.heart);
+        drawCore(ctx, [cx, cy + bob], 18, COLORS.core);
       }
 
-      for (const web of this.webs) this.drawWeb(web.split(",").map(Number));
+      for (const snare of this.snares) this.drawSnare(snare.split(",").map(Number));
       if (this.hiddenRevealed && !this.hiddenCollected) this.drawItemIcon(this.level.hiddenKind, this.level.hiddenPos);
       for (const item of this.items) this.drawItemIcon(item.kind, item.pos);
-      for (const spider of this.spiders) this.drawSpider(spider.pos);
-      for (const fireball of this.fireballs) this.drawFireball(fireball.pos);
-      for (const bird of this.birds) this.drawBird(bird.pos);
-      for (const spray of this.sprays) this.drawSpray(spray);
+      for (const drone of this.drones) this.drawDrone(drone.pos);
+      for (const surge of this.surges) this.drawSurge(surge.pos);
+      for (const switcher of this.switchers) this.drawSwitcher(switcher.pos);
+      for (const pulse of this.pulses) this.drawPulse(pulse);
 
-      this.drawPenguin(this.gurin);
-      this.drawPenguin(this.malon);
+      this.drawRunner(this.nova);
+      this.drawRunner(this.vega);
 
       if (this.message) {
         ctx.fillStyle = "#000000";
@@ -1091,8 +1157,8 @@
         this.text(this.message, WINDOW_W / 2, BOARD_Y + BOARD_H + 22, 16, COLORS.yellow, { center: true });
       }
 
-      let footer = "Arrows 移動 | Z/Space 噴射 | P 暫停";
-      if (this.level.bonus) footer += ` | Hearts left: ${this.bonusHearts.size}`;
+      let footer = "Arrows 移動 | Z/Space 脈衝 | P 暫停";
+      if (this.level.bonus) footer += ` | Cores left: ${this.bonusCores.size}`;
       this.text(footer, WINDOW_W / 2, WINDOW_H - 20, 16, COLORS.muted, { center: true });
     }
 
@@ -1102,57 +1168,71 @@
         ctx.strokeStyle = "#5a4420";
         ctx.lineWidth = 2;
         ctx.strokeRect(x + 1, y + 1, TILE - 2, TILE - 2);
-        drawHeart(ctx, [x + TILE / 2, y + TILE / 2], 12, COLORS.goal);
+        drawCore(ctx, [x + TILE / 2, y + TILE / 2], 12, COLORS.goal);
       }
     }
 
-    drawCagedHeart(pos) {
+    drawRelayCore(pos) {
       const [x, y] = gridToPx(pos);
-      ctx.fillStyle = "#281e2c";
+      ctx.fillStyle = "#182531";
       ctx.fillRect(x, y, TILE, TILE);
-      drawHeart(ctx, [x + TILE / 2, y + TILE / 2], 18, COLORS.heart);
+      drawCore(ctx, [x + TILE / 2, y + TILE / 2], 18, COLORS.core);
       ctx.strokeStyle = COLORS.goal;
       ctx.lineWidth = 2;
-      for (let i = 0; i < 4; i += 1) {
-        const barX = x + 6 + i * 6;
-        ctx.beginPath();
-        ctx.moveTo(barX, y + 3);
-        ctx.lineTo(barX, y + TILE - 3);
-        ctx.stroke();
-      }
+      ctx.beginPath();
+      ctx.moveTo(x + TILE / 2, y + 4);
+      ctx.lineTo(x + TILE - 4, y + TILE / 2);
+      ctx.lineTo(x + TILE / 2, y + TILE - 4);
+      ctx.lineTo(x + 4, y + TILE / 2);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.strokeStyle = COLORS.pulse;
+      ctx.beginPath();
+      ctx.moveTo(x + 8, y + 8);
+      ctx.lineTo(x + TILE - 8, y + TILE - 8);
+      ctx.moveTo(x + TILE - 8, y + 8);
+      ctx.lineTo(x + 8, y + TILE - 8);
+      ctx.stroke();
       ctx.strokeRect(x + 2, y + 2, TILE - 4, TILE - 4);
     }
 
-    drawPenguin(penguin) {
-      this.drawPenguinAt(cellCenter(penguin.pos), penguin.color, penguin.name, penguin.facing, penguin.trapped);
+    drawRunner(runner) {
+      this.drawRunnerAt(cellCenter(runner.pos), runner.color, runner.name, runner.facing, runner.trapped);
     }
 
-    drawPenguinAt([cx, cy], color, name, facing, trapped) {
+    drawRunnerAt([cx, cy], color, name, facing, trapped) {
+      const pulseGlow = Math.sin(performance.now() * 0.01) * 0.18 + 0.72;
+      ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + 13, 11, 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+
       ctx.fillStyle = color;
       ctx.beginPath();
-      ctx.ellipse(cx, cy + 0.5, 11, 13.5, 0, 0, Math.PI * 2);
+      ctx.moveTo(cx, cy - 14);
+      ctx.lineTo(cx + 12, cy - 4);
+      ctx.lineTo(cx + 9, cy + 12);
+      ctx.lineTo(cx, cy + 16);
+      ctx.lineTo(cx - 9, cy + 12);
+      ctx.lineTo(cx - 12, cy - 4);
+      ctx.closePath();
       ctx.fill();
 
-      ctx.fillStyle = COLORS.white;
-      ctx.beginPath();
-      ctx.ellipse(cx, cy + 4, 6.5, 9.5, 0, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.strokeStyle = COLORS.white;
+      ctx.lineWidth = 2;
+      ctx.stroke();
 
-      ctx.fillStyle = COLORS.black;
-      ctx.beginPath();
-      ctx.arc(cx - 4, cy - 5, 2, 0, Math.PI * 2);
-      ctx.arc(cx + 4, cy - 5, 2, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255, 255, 255, ${pulseGlow})`;
+      roundedRect(ctx, cx - 5, cy - 8, 10, 15, 4);
       ctx.fill();
 
       ctx.fillStyle = COLORS.yellow;
       ctx.beginPath();
-      ctx.moveTo(cx - 3, cy);
-      ctx.lineTo(cx + 3, cy);
-      ctx.lineTo(cx + facing[0] * 8, cy - 1 + facing[1] * 5);
+      ctx.moveTo(cx + facing[0] * 11, cy + facing[1] * 11);
+      ctx.lineTo(cx + facing[1] * 4 - facing[0] * 3, cy - facing[0] * 4 - facing[1] * 3);
+      ctx.lineTo(cx - facing[1] * 4 - facing[0] * 3, cy + facing[0] * 4 - facing[1] * 3);
       ctx.closePath();
       ctx.fill();
-      ctx.fillRect(cx - 9, cy + 11, 7, 3);
-      ctx.fillRect(cx + 2, cy + 11, 7, 3);
 
       if (this.invincibleTimer > 0 && !trapped) {
         const pulse = Math.sin(performance.now() * 0.02) > 0 ? 3 : 2;
@@ -1164,108 +1244,125 @@
       }
 
       if (trapped) {
-        ctx.strokeStyle = COLORS.web;
+        ctx.strokeStyle = COLORS.snare;
         ctx.lineWidth = 1;
-        for (let offset = -9; offset <= 9; offset += 6) {
-          ctx.beginPath();
-          ctx.moveTo(cx - 12, cy + offset);
-          ctx.lineTo(cx + 12, cy - offset);
-          ctx.moveTo(cx + offset, cy - 12);
-          ctx.lineTo(cx - offset, cy + 12);
-          ctx.stroke();
+        ctx.beginPath();
+        ctx.rect(cx - 15, cy - 15, 30, 30);
+        ctx.stroke();
+        for (let i = 0; i < TRAP_ESCAPE_STEPS; i += 1) {
+          ctx.fillStyle = i < this.escapePipsFor(name) ? COLORS.pulse : "rgba(198, 205, 224, 0.35)";
+          ctx.fillRect(cx - 12 + i * 8, cy + 18, 5, 3);
         }
       }
 
       this.text(name, cx, cy - 24, 16, COLORS.text, { center: true });
     }
 
-    drawWeb(pos) {
-      const [cx, cy] = cellCenter(pos);
-      ctx.strokeStyle = COLORS.web;
-      ctx.lineWidth = 1;
-      for (const radius of [5, 10, 14]) {
-        ctx.beginPath();
-        ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-        ctx.stroke();
+    escapePipsFor(name) {
+      for (const runner of [this.nova, this.vega]) {
+        if (runner.name === name) return runner.trapEscape;
       }
-      for (let angle = 0; angle < 180; angle += 30) {
-        const dx = Math.cos((angle * Math.PI) / 180) * 15;
-        const dy = Math.sin((angle * Math.PI) / 180) * 15;
-        ctx.beginPath();
-        ctx.moveTo(cx - dx, cy - dy);
-        ctx.lineTo(cx + dx, cy + dy);
-        ctx.stroke();
-      }
+      return 0;
     }
 
-    drawSpider(pos) {
+    drawSnare(pos) {
       const [cx, cy] = cellCenter(pos);
-      ctx.strokeStyle = COLORS.black;
+      ctx.strokeStyle = COLORS.snare;
       ctx.lineWidth = 2;
-      for (const side of [-1, 1]) {
-        for (const dy of [-6, -2, 2, 6]) {
-          ctx.beginPath();
-          ctx.moveTo(cx + side * 5, cy + dy);
-          ctx.lineTo(cx + side * 15, cy + dy + side * 2);
-          ctx.stroke();
-        }
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - 14);
+      ctx.lineTo(cx + 13, cy - 5);
+      ctx.lineTo(cx + 9, cy + 12);
+      ctx.lineTo(cx - 9, cy + 12);
+      ctx.lineTo(cx - 13, cy - 5);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.strokeStyle = COLORS.pulse;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(cx - 10, cy - 2);
+      ctx.lineTo(cx + 10, cy - 2);
+      ctx.moveTo(cx - 6, cy + 5);
+      ctx.lineTo(cx + 6, cy + 5);
+      ctx.moveTo(cx, cy - 12);
+      ctx.lineTo(cx, cy + 12);
+      ctx.stroke();
+      ctx.fillStyle = COLORS.snare;
+      for (const [dx, dy] of [[0, -14], [13, -5], [9, 12], [-9, 12], [-13, -5]]) {
+        ctx.beginPath();
+        ctx.arc(cx + dx, cy + dy, 2, 0, Math.PI * 2);
+        ctx.fill();
       }
-      ctx.fillStyle = "#1c161e";
+    }
+
+    drawDrone(pos) {
+      const [cx, cy] = cellCenter(pos);
+      const spin = performance.now() * 0.006;
+      ctx.strokeStyle = COLORS.danger;
+      ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(cx, cy, 9, 0, Math.PI * 2);
+      ctx.ellipse(cx, cy, 14, 8, spin, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, 14, 8, -spin, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = "#2b2639";
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - 10);
+      ctx.lineTo(cx + 10, cy);
+      ctx.lineTo(cx, cy + 10);
+      ctx.lineTo(cx - 10, cy);
+      ctx.closePath();
       ctx.fill();
-      ctx.fillStyle = "#322a38";
+      ctx.strokeStyle = COLORS.white;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.fillStyle = COLORS.pulse;
       ctx.beginPath();
-      ctx.arc(cx, cy - 7, 6, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = COLORS.danger;
-      ctx.beginPath();
-      ctx.arc(cx - 3, cy - 9, 2, 0, Math.PI * 2);
-      ctx.arc(cx + 3, cy - 9, 2, 0, Math.PI * 2);
+      ctx.arc(cx, cy, 3, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    drawFireball(pos) {
+    drawSurge(pos) {
       const [cx, cy] = cellCenter(pos);
       const tick = performance.now() * 0.012;
       const r = 10 + Math.sin(tick) * 2;
-      ctx.fillStyle = COLORS.fire;
+      ctx.fillStyle = "rgba(255, 110, 40, 0.75)";
       ctx.beginPath();
       ctx.arc(cx, cy, r, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = COLORS.yellow;
+      ctx.strokeStyle = COLORS.yellow;
+      ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(cx - 2, cy - 1, Math.max(4, r - 5), 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = COLORS.danger;
+      ctx.moveTo(cx - 3, cy - 12);
+      ctx.lineTo(cx + 4, cy - 2);
+      ctx.lineTo(cx - 2, cy - 2);
+      ctx.lineTo(cx + 3, cy + 12);
+      ctx.stroke();
+      ctx.strokeStyle = COLORS.white;
       ctx.beginPath();
-      ctx.moveTo(cx, cy - 16);
-      ctx.lineTo(cx - 8, cy);
-      ctx.lineTo(cx + 8, cy);
-      ctx.closePath();
-      ctx.fill();
+      ctx.arc(cx, cy, r + 3, 0, Math.PI * 2);
+      ctx.stroke();
     }
 
-    drawBird(pos) {
+    drawSwitcher(pos) {
       const [cx, cy] = cellCenter(pos);
-      const flap = Math.sin(performance.now() * 0.015) * 4;
-      ctx.fillStyle = COLORS.bird;
+      const twist = performance.now() * 0.004;
+      ctx.fillStyle = COLORS.switcher;
       ctx.beginPath();
-      ctx.arc(cx, cy, 8, 0, Math.PI * 2);
+      ctx.arc(cx, cy, 9, 0, Math.PI * 2);
       ctx.fill();
+      ctx.strokeStyle = COLORS.pulse;
+      ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(cx - 7, cy);
-      ctx.lineTo(cx - 17, cy - 7 - flap);
-      ctx.lineTo(cx - 13, cy + 7);
-      ctx.closePath();
-      ctx.moveTo(cx + 7, cy);
-      ctx.lineTo(cx + 17, cy - 7 - flap);
-      ctx.lineTo(cx + 13, cy + 7);
-      ctx.closePath();
-      ctx.fill();
+      ctx.ellipse(cx, cy, 16, 6, twist, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, 16, 6, twist + Math.PI / 2, 0, Math.PI * 2);
+      ctx.stroke();
       ctx.fillStyle = COLORS.white;
       ctx.beginPath();
-      ctx.arc(cx + 3, cy - 3, 2, 0, Math.PI * 2);
+      ctx.arc(cx, cy, 3, 0, Math.PI * 2);
       ctx.fill();
     }
 
@@ -1278,62 +1375,71 @@
       ctx.lineWidth = 2;
       ctx.stroke();
 
-      if (kind === "cake") {
-        ctx.fillStyle = "#ffb4aa";
-        ctx.fillRect(cx - 8, cy - 2, 16, 8);
+      if (kind === "battery") {
+        ctx.fillStyle = COLORS.pulse;
+        ctx.fillRect(cx - 8, cy - 6, 16, 12);
         ctx.fillStyle = COLORS.white;
-        ctx.fillRect(cx - 8, cy - 7, 16, 5);
-      } else if (kind === "umbrella") {
-        ctx.strokeStyle = COLORS.heart;
+        ctx.fillRect(cx + 8, cy - 3, 3, 6);
+        ctx.fillRect(cx - 5, cy - 2, 10, 4);
+      } else if (kind === "shield") {
+        ctx.strokeStyle = COLORS.pulse;
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.arc(cx, cy, 10, Math.PI, Math.PI * 2);
+        ctx.moveTo(cx, cy - 9);
+        ctx.lineTo(cx + 8, cy - 4);
+        ctx.lineTo(cx + 5, cy + 8);
+        ctx.lineTo(cx, cy + 11);
+        ctx.lineTo(cx - 5, cy + 8);
+        ctx.lineTo(cx - 8, cy - 4);
+        ctx.closePath();
         ctx.stroke();
-        ctx.strokeStyle = COLORS.white;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(cx, cy);
-        ctx.lineTo(cx, cy + 9);
-        ctx.stroke();
-      } else if (kind === "harp") {
+      } else if (kind === "metronome") {
         ctx.strokeStyle = COLORS.yellow;
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.arc(cx, cy, 9, Math.PI / 2, (3 * Math.PI) / 2);
+        ctx.moveTo(cx - 7, cy + 8);
+        ctx.lineTo(cx, cy - 9);
+        ctx.lineTo(cx + 7, cy + 8);
+        ctx.closePath();
         ctx.stroke();
-        ctx.strokeStyle = COLORS.white;
-        ctx.lineWidth = 1;
-        for (let i = 0; i < 3; i += 1) {
-          ctx.beginPath();
-          ctx.moveTo(cx - 2 + i * 3, cy - 7);
-          ctx.lineTo(cx - 2 + i * 3, cy + 7);
-          ctx.stroke();
-        }
-      } else if (kind === "card") {
-        ctx.fillStyle = COLORS.white;
-        ctx.fillRect(cx - 7, cy - 9, 14, 18);
-        drawHeart(ctx, [cx, cy], 8, COLORS.heart);
-      } else if (kind === "whale") {
-        ctx.fillStyle = COLORS.spray;
+        ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.ellipse(cx, cy, 9, 5.5, 0, 0, Math.PI * 2);
-        ctx.moveTo(cx + 8, cy);
-        ctx.lineTo(cx + 13, cy - 5);
-        ctx.lineTo(cx + 13, cy + 5);
+        ctx.moveTo(cx, cy - 4);
+        ctx.lineTo(cx + 5, cy + 4);
+        ctx.stroke();
+      } else if (kind === "scanner") {
+        ctx.strokeStyle = COLORS.yellow;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(cx - 7, cy - 8, 14, 16);
+        ctx.strokeStyle = COLORS.pulse;
+        ctx.beginPath();
+        ctx.moveTo(cx - 4, cy - 3);
+        ctx.lineTo(cx + 4, cy - 3);
+        ctx.moveTo(cx - 4, cy + 2);
+        ctx.lineTo(cx + 4, cy + 2);
+        ctx.stroke();
+      } else if (kind === "prism") {
+        ctx.fillStyle = COLORS.pulse;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - 10);
+        ctx.lineTo(cx + 9, cy + 8);
+        ctx.lineTo(cx - 9, cy + 8);
         ctx.closePath();
         ctx.fill();
+        ctx.strokeStyle = COLORS.white;
+        ctx.stroke();
       } else if (kind === "life") {
-        drawHeart(ctx, [cx, cy], 18, COLORS.heart);
+        drawCore(ctx, [cx, cy], 18, COLORS.core);
         this.text("1", cx, cy, 16, COLORS.white, { center: true });
       } else if (kind === "score") {
-        this.text("$", cx, cy - 9, 22, COLORS.yellow, { center: true });
+        this.text("*", cx, cy - 9, 22, COLORS.yellow, { center: true });
       }
     }
 
-    drawSpray(spray) {
-      const start = cellCenter(spray.origin);
-      const end = cellCenter(spray.target);
-      ctx.strokeStyle = COLORS.spray;
+    drawPulse(pulse) {
+      const start = cellCenter(pulse.origin);
+      const end = cellCenter(pulse.target);
+      ctx.strokeStyle = COLORS.pulse;
       ctx.lineWidth = 5;
       ctx.beginPath();
       ctx.moveTo(start[0], start[1]);
@@ -1352,20 +1458,20 @@
       this.text(subtitle, WINDOW_W / 2, 260, 22, COLORS.text, { center: true });
     }
 
-    drawLoveAnimation() {
+    drawSyncAnimation() {
       ctx.fillStyle = "rgba(0, 0, 0, 0.32)";
       ctx.fillRect(0, 0, WINDOW_W, WINDOW_H);
       const t = performance.now() * 0.006;
-      this.text("LOVE CLEAR!", WINDOW_W / 2, 166, 46, COLORS.heart, { center: true, bold: true });
-      this.text("兩隻企鵝終於重逢", WINDOW_W / 2, 210, 22, COLORS.yellow, { center: true });
+      this.text("SYNC CLEAR!", WINDOW_W / 2, 166, 46, COLORS.core, { center: true, bold: true });
+      this.text("雙訊號完成同步", WINDOW_W / 2, 210, 22, COLORS.yellow, { center: true });
       for (let i = 0; i < 8; i += 1) {
         const x = 230 + i * 26;
         const y = 260 + Math.sin(t + i) * 16;
-        drawHeart(ctx, [x, y], 18, COLORS.heart);
+        drawCore(ctx, [x, y], 18, COLORS.core);
       }
-      this.drawPenguinAt([280, 318], COLORS.gurin, this.gurin.name, [1, 0], false);
-      this.drawPenguinAt([360, 318], COLORS.malon, this.malon.name, [-1, 0], false);
-      drawHeart(ctx, [320, 308], 32, COLORS.heart);
+      this.drawRunnerAt([280, 318], COLORS.nova, this.nova.name, [1, 0], false);
+      this.drawRunnerAt([360, 318], COLORS.vega, this.vega.name, [-1, 0], false);
+      drawCore(ctx, [320, 308], 32, COLORS.core);
     }
 
     drawGameOver(win) {
@@ -1373,16 +1479,16 @@
       const color = win ? COLORS.yellow : COLORS.danger;
       this.text(title, WINDOW_W / 2, 110, 46, color, { center: true, bold: true });
       if (win) {
-        this.text("Gurin 和 Malon 完成 10 關 + Bonus!", WINDOW_W / 2, 170, 22, COLORS.text, { center: true });
+        this.text("Nova 和 Vega 完成 10 關 + Bonus!", WINDOW_W / 2, 170, 22, COLORS.text, { center: true });
       } else {
-        this.text("愛情迷宮仍未破解，再挑戰一次吧。", WINDOW_W / 2, 170, 22, COLORS.text, { center: true });
+        this.text("同步路徑尚未完成，再挑戰一次吧。", WINDOW_W / 2, 170, 22, COLORS.text, { center: true });
       }
       this.text(`Score: ${String(this.score).padStart(6, "0")}`, WINDOW_W / 2, 230, 34, COLORS.yellow, { center: true, bold: true });
       this.text(`High Score: ${String(this.highScore).padStart(6, "0")}`, WINDOW_W / 2, 270, 22, COLORS.muted, { center: true });
       this.text("ENTER: 回標題    ESC: 離開", WINDOW_W / 2, 340, 22, COLORS.text, { center: true });
-      this.drawPenguinAt([250, 400], COLORS.gurin, "Gurin", [1, 0], false);
-      this.drawPenguinAt([390, 400], COLORS.malon, "Malon", [-1, 0], false);
-      drawHeart(ctx, [320, 394], 30, COLORS.heart);
+      this.drawRunnerAt([250, 400], COLORS.nova, "Nova", [1, 0], false);
+      this.drawRunnerAt([390, 400], COLORS.vega, "Vega", [-1, 0], false);
+      drawCore(ctx, [320, 394], 30, COLORS.core);
     }
 
     frame(now) {
@@ -1394,7 +1500,7 @@
     }
   }
 
-  const game = new BinaryLandGame();
+  const game = new LumapairGame();
 
   window.addEventListener("keydown", (event) => {
     if (DIR_VECTORS.has(event.code) || ["Space", "KeyZ", "KeyP", "Enter"].includes(event.code)) {
