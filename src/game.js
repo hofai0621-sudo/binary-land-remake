@@ -28,6 +28,7 @@
   const FEIFEI_NAME = "飛飛";
   const CHUNXINXIN_NAME = "淳忻忻";
   const HIGH_SCORE_KEY = "baby-feifei-high-score";
+  const LEVEL_CLEAR_DURATION = 10;
 
   const STATE_TITLE = "title";
   const STATE_HELP = "help";
@@ -591,8 +592,13 @@
       const timeBonus = Math.max(0, Math.floor(this.timeLeft)) * (this.level.bonus ? 30 : 10);
       this.score += timeBonus;
       this.saveHighScore();
-      this.clearTimer = 2.8;
+      this.clearTimer = LEVEL_CLEAR_DURATION;
       this.state = STATE_LEVEL_CLEAR;
+    }
+
+    skipLevelClear() {
+      if (this.state !== STATE_LEVEL_CLEAR) return;
+      this.advanceAfterClear();
     }
 
     advanceAfterClear() {
@@ -1535,16 +1541,19 @@
       ctx.fillStyle = "rgba(0, 0, 0, 0.32)";
       ctx.fillRect(0, 0, WINDOW_W, WINDOW_H);
       const t = performance.now() * 0.006;
+      const secondsLeft = Math.max(1, Math.ceil(this.clearTimer));
       this.text("奔赴成功!", WINDOW_W / 2, 166, 46, COLORS.core, { center: true, bold: true });
       this.text("飛飛和淳忻忻完成同步", WINDOW_W / 2, 210, 22, COLORS.yellow, { center: true });
+      this.text(`自動前往下一關：${secondsLeft}`, WINDOW_W / 2, 240, 20, COLORS.text, { center: true });
+      this.text("雙擊畫面立即繼續", WINDOW_W / 2, 266, 18, COLORS.muted, { center: true });
       for (let i = 0; i < 8; i += 1) {
         const x = 230 + i * 26;
-        const y = 260 + Math.sin(t + i) * 16;
+        const y = 286 + Math.sin(t + i) * 16;
         drawCore(ctx, [x, y], 18, COLORS.core);
       }
-      this.drawRunnerAt([280, 318], COLORS.nova, this.nova.name, [1, 0], false, this.nova.spriteKey);
-      this.drawRunnerAt([360, 318], COLORS.vega, this.vega.name, [-1, 0], false, this.vega.spriteKey);
-      drawCore(ctx, [320, 308], 32, COLORS.core);
+      this.drawRunnerAt([280, 344], COLORS.nova, this.nova.name, [1, 0], false, this.nova.spriteKey);
+      this.drawRunnerAt([360, 344], COLORS.vega, this.vega.name, [-1, 0], false, this.vega.spriteKey);
+      drawCore(ctx, [320, 334], 32, COLORS.core);
     }
 
     drawGameOver(win) {
@@ -1587,6 +1596,12 @@
   });
 
   canvas.addEventListener("pointerdown", () => canvas.focus());
+
+  canvas.addEventListener("dblclick", (event) => {
+    event.preventDefault();
+    canvas.focus();
+    game.skipLevelClear();
+  });
 
   function keyForCode(code) {
     if (code.startsWith("Key")) return code.slice(3).toLowerCase();
